@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, date
 import json
 
 from app.database import get_session, get_setting, save_setting
@@ -20,9 +20,18 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session: Session = Depends(get_session)):
     shows = session.exec(select(TrackedShow).order_by(TrackedShow.next_episode_date)).all()
+    today = date.today()
+    today_shows = []
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
-    return templates.TemplateResponse("index.html", {"request": request, "shows": shows})
+        if show.next_episode_date and show.next_episode_date.date() == today:
+            today_shows.append(show)
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "shows": shows,
+        "today_shows": today_shows,
+        "today_label": today.strftime("%A, %B %d"),
+    })
 
 
 # ── Search ─────────────────────────────────────────────────────────────────────

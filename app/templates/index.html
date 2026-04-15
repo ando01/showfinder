@@ -18,6 +18,44 @@
     <a href="/settings" class="text-sm text-gray-400 hover:text-white transition px-4 py-2">Settings</a>
   </div>
 
+  <!-- Today's Shows -->
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
+    <div class="flex items-baseline gap-3 mb-3">
+      <h2 class="text-lg font-semibold">On Today</h2>
+      <span class="text-gray-500 text-sm">{{ today_label }}</span>
+    </div>
+    {% if today_shows %}
+      <div class="grid gap-3">
+        {% for show in today_shows %}
+          <div class="flex items-center gap-4 bg-gray-800 rounded-lg px-4 py-3">
+            {% if show.poster_path %}
+              <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+            {% else %}
+              <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-white">{{ show.name }}</p>
+              <p class="text-sm text-gray-300 mt-0.5">
+                <span class="font-medium">{{ show.next_episode_number }}</span>
+                {% if show.next_episode_name %} — {{ show.next_episode_name }}{% endif %}
+              </p>
+              {% if show.air_time %}
+                <p class="text-xs text-gray-500 mt-0.5">{{ show.air_time }}</p>
+              {% endif %}
+            </div>
+            <div class="flex flex-wrap gap-1 justify-end">
+              {% for svc in show._services %}
+                <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-gray-500 text-sm">No tracked shows airing today.</p>
+    {% endif %}
+  </div>
+
   <!-- Search -->
   <div class="bg-gray-900 rounded-xl p-5 mb-8 border border-gray-800">
     <h2 class="text-lg font-semibold mb-3">Add a Show</h2>
