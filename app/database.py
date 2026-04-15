@@ -11,3 +11,20 @@ def create_db():
 def get_session():
     with Session(engine) as session:
         yield session
+
+
+def get_setting(session: Session, key: str, default: str = "") -> str:
+    from app.models import AppSettings
+    row = session.get(AppSettings, key)
+    return row.value if row else default
+
+
+def save_setting(session: Session, key: str, value: str):
+    from app.models import AppSettings
+    row = session.get(AppSettings, key)
+    if row:
+        row.value = value
+    else:
+        row = AppSettings(key=key, value=value)
+    session.add(row)
+    session.commit()

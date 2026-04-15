@@ -3,6 +3,11 @@ from typing import Optional
 from datetime import datetime
 
 
+class AppSettings(SQLModel, table=True):
+    key: str = Field(primary_key=True)
+    value: str
+
+
 class TrackedShow(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     tmdb_id: int = Field(index=True, unique=True)

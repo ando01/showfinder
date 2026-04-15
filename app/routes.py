@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from datetime import datetime
 import json
 
-from app.database import get_session
+from app.database import get_session, get_setting, save_setting
 from app.models import TrackedShow
 from app import tmdb
 from app.notifications import send_test_notification
@@ -20,7 +20,6 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session: Session = Depends(get_session)):
     shows = session.exec(select(TrackedShow).order_by(TrackedShow.next_episode_date)).all()
-    # Parse streaming_services JSON for display
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
     return templates.TemplateResponse("index.html", {"request": request, "shows": shows})
@@ -40,7 +39,6 @@ async def search(request: Request, q: str = ""):
 
 @router.post("/shows/add", response_class=HTMLResponse)
 async def add_show(request: Request, tmdb_id: int = Form(...), session: Session = Depends(get_session)):
-    # Check not already tracked
     existing = session.exec(select(TrackedShow).where(TrackedShow.tmdb_id == tmdb_id)).first()
     if existing:
         return HTMLResponse('<p class="text-yellow-400">Already in your watchlist.</p>')
@@ -113,9 +111,35 @@ async def refresh_show(request: Request, show_id: int, session: Session = Depend
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
 
 
+# ── Settings page ──────────────────────────────────────────────────────────────
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, session: Session = Depends(get_session)):
+    ntfy_url = get_setting(session, "ntfy_url")
+    ntfy_topic = get_setting(session, "ntfy_topic")
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "ntfy_url": ntfy_url,
+        "ntfy_topic": ntfy_topic,
+    })
+
+
+@router.post("/settings", response_class=HTMLResponse)
+async def save_settings(
+    request: Request,
+    ntfy_url: str = Form(...),
+    ntfy_topic: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    save_setting(session, "ntfy_url", ntfy_url.strip())
+    save_setting(session, "ntfy_topic", ntfy_topic.strip())
+    return HTMLResponse('<span class="text-green-400 text-sm">Settings saved.</span>')
+
+
 # ── Test notification ──────────────────────────────────────────────────────────
 
 @router.post("/test-notification", response_class=HTMLResponse)
-async def test_notification():
-    await send_test_notification()
-    return HTMLResponse('<span class="text-green-400 text-sm">Test notification sent!</span>')
+async def test_notification(session: Session = Depends(get_session)):
+    success, message = await send_test_notification(session=session)
+    color = "text-green-400" if success else "text-red-400"
+    return HTMLResponse(f'<span class="{color} text-sm">{message}</span>')

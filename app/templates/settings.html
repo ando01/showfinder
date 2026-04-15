@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-950 text-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — ShowFinder</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen p-6 max-w-2xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-white">ShowFinder</h1>
+      <p class="text-gray-400 text-sm mt-1">Settings</p>
+    </div>
+    <a href="/" class="text-sm text-gray-400 hover:text-white transition">← Back to Watchlist</a>
+  </div>
+
+  <!-- ntfy Configuration -->
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-1">Push Notifications</h2>
+    <p class="text-gray-400 text-sm mb-5">
+      Configure your self-hosted <a href="https://ntfy.sh" target="_blank" class="text-blue-400 hover:underline">ntfy</a> server.
+      Settings saved here override the values in your <code class="text-gray-300">.env</code> file.
+    </p>
+
+    <form
+      hx-post="/settings"
+      hx-target="#settings-status"
+      hx-swap="innerHTML"
+      class="space-y-4"
+    >
+      <div>
+        <label class="block text-sm text-gray-300 mb-1">ntfy Server URL</label>
+        <input
+          type="url"
+          name="ntfy_url"
+          value="{{ ntfy_url }}"
+          placeholder="http://192.168.1.x:80  or  https://ntfy.yourdomain.com"
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+        <p class="text-gray-600 text-xs mt-1">Include the protocol (http:// or https://), no trailing slash.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-300 mb-1">Topic</label>
+        <input
+          type="text"
+          name="ntfy_topic"
+          value="{{ ntfy_topic }}"
+          placeholder="showfinder"
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+        <p class="text-gray-600 text-xs mt-1">The ntfy topic reminders will be published to. Subscribe to this topic in the ntfy app.</p>
+      </div>
+
+      <div class="flex items-center gap-4 pt-1">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-5 py-2 rounded-lg transition">
+          Save Settings
+        </button>
+        <span id="settings-status" class="text-sm"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Test notification -->
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <h2 class="text-lg font-semibold mb-1">Test Notification</h2>
+    <p class="text-gray-400 text-sm mb-4">
+      Send a test push notification to verify your ntfy setup is working.
+      Make sure you've saved your settings above and are subscribed to the topic in the ntfy app.
+    </p>
+    <div class="flex items-center gap-4">
+      <button
+        hx-post="/test-notification"
+        hx-target="#test-status"
+        hx-swap="innerHTML"
+        class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-5 py-2 rounded-lg transition"
+      >
+        Send Test Notification
+      </button>
+      <span id="test-status" class="text-sm"></span>
+    </div>
+  </div>
+
+</body>
+</html>
