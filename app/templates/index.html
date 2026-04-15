@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-950 text-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShowFinder</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen p-6 max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-white">ShowFinder</h1>
+      <p class="text-gray-400 text-sm mt-1">Track your shows. Never miss an episode.</p>
+    </div>
+    <button
+      hx-post="/test-notification"
+      hx-target="#notif-status"
+      hx-swap="innerHTML"
+      class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition"
+    >
+      Test Notification
+    </button>
+    <span id="notif-status" class="ml-3 text-sm"></span>
+  </div>
+
+  <!-- Search -->
+  <div class="bg-gray-900 rounded-xl p-5 mb-8 border border-gray-800">
+    <h2 class="text-lg font-semibold mb-3">Add a Show</h2>
+    <input
+      type="text"
+      name="q"
+      placeholder="Search for a TV show..."
+      autocomplete="off"
+      hx-get="/search"
+      hx-trigger="keyup changed delay:400ms"
+      hx-target="#search-results"
+      hx-swap="innerHTML"
+      class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+    <div id="search-results" class="mt-3"></div>
+  </div>
+
+  <!-- Watchlist -->
+  <h2 class="text-lg font-semibold mb-4">Your Watchlist</h2>
+  <div id="watchlist" class="grid gap-4">
+    {% for show in shows %}
+      {% include "partials/show_card.html" %}
+    {% else %}
+      <p class="text-gray-500 text-sm">No shows yet. Search above to add one.</p>
+    {% endfor %}
+  </div>
+
+</body>
+</html>

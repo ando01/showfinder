@@ -1,0 +1,99 @@
+<div id="show-{{ show.id }}" class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex gap-4 p-4">
+
+  <!-- Poster -->
+  {% if show.poster_path %}
+    <img src="{{ show.poster_path }}" alt="{{ show.name }}" class="w-16 h-24 object-cover rounded-lg flex-shrink-0" />
+  {% else %}
+    <div class="w-16 h-24 bg-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-600 text-xs text-center">No Image</div>
+  {% endif %}
+
+  <!-- Info -->
+  <div class="flex-1 min-w-0">
+    <div class="flex items-start justify-between gap-2">
+      <h3 class="font-semibold text-white text-lg leading-tight">{{ show.name }}</h3>
+      <button
+        hx-delete="/shows/{{ show.id }}"
+        hx-target="#show-{{ show.id }}"
+        hx-swap="outerHTML"
+        hx-confirm="Remove {{ show.name }} from your watchlist?"
+        class="text-gray-600 hover:text-red-400 text-xl leading-none flex-shrink-0 transition"
+        title="Remove"
+      >&times;</button>
+    </div>
+
+    <!-- Status badge -->
+    <div class="flex flex-wrap gap-2 mt-1 mb-2">
+      {% if show.status %}
+        <span class="text-xs px-2 py-0.5 rounded-full
+          {% if show.status == 'Returning Series' %}bg-green-900 text-green-300
+          {% elif show.status == 'Ended' %}bg-gray-800 text-gray-400
+          {% else %}bg-blue-900 text-blue-300{% endif %}">
+          {{ show.status }}
+        </span>
+      {% endif %}
+      {% if show.network %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">{{ show.network }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Streaming services -->
+    {% if show._services %}
+      <div class="flex flex-wrap gap-1 mb-2">
+        {% for svc in show._services %}
+          <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Next episode -->
+    {% if show.next_episode_date %}
+      <p class="text-sm text-gray-300">
+        <span class="font-medium text-white">{{ show.next_episode_number }}</span>
+        {% if show.next_episode_name %} — {{ show.next_episode_name }}{% endif %}
+        <span class="text-gray-500 ml-2">{{ show.next_episode_date.strftime('%b %d, %Y') }}</span>
+        {% if show.air_day %}<span class="text-gray-500"> ({{ show.air_day }})</span>{% endif %}
+      </p>
+    {% elif show.status == 'Ended' %}
+      <p class="text-sm text-gray-500">Series ended</p>
+    {% else %}
+      <p class="text-sm text-gray-500">No upcoming episode scheduled</p>
+    {% endif %}
+
+    <!-- Reminder controls -->
+    <form
+      hx-post="/shows/{{ show.id }}/reminder"
+      hx-target="#reminder-status-{{ show.id }}"
+      hx-swap="innerHTML"
+      class="flex items-center gap-3 mt-3 flex-wrap"
+    >
+      <label class="flex items-center gap-2 text-sm text-gray-400">
+        <input type="checkbox" name="reminder_enabled" value="true"
+          {% if show.reminder_enabled %}checked{% endif %}
+          class="accent-blue-500" />
+        Remind me
+      </label>
+      <select name="reminder_hours" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded px-2 py-1">
+        {% for h in [1, 2, 3, 6, 12, 24] %}
+          <option value="{{ h }}" {% if show.reminder_hours == h %}selected{% endif %}>
+            {{ h }}h before
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded transition">Save</button>
+      <span id="reminder-status-{{ show.id }}" class="text-xs"></span>
+    </form>
+
+    <!-- Refresh -->
+    <div class="flex items-center gap-3 mt-2">
+      <button
+        hx-post="/shows/{{ show.id }}/refresh"
+        hx-target="#show-{{ show.id }}"
+        hx-swap="outerHTML"
+        class="text-xs text-gray-600 hover:text-gray-400 transition"
+      >↻ Refresh</button>
+      {% if show.last_refreshed %}
+        <span class="text-xs text-gray-700">Updated {{ show.last_refreshed.strftime('%b %d') }}</span>
+      {% endif %}
+    </div>
+  </div>
+</div>

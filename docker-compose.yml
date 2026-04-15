@@ -1,0 +1,12 @@
+services:
+  showfinder:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///./data/showfinder.db
+    restart: unless-stopped
