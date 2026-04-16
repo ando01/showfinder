@@ -14,7 +14,7 @@
   <div class="flex items-center justify-between mb-8">
     <div>
       <h1 class="text-3xl font-bold text-white">ShowFinder</h1>
-      <p class="text-gray-400 text-sm mt-1">Discover new shows</p>
+      <p class="text-gray-400 text-sm mt-1">Discover new shows and movies</p>
     </div>
     <div class="flex items-center gap-1 sm:gap-2">
       <a href="/" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Watchlist</a>
@@ -22,20 +22,26 @@
     </div>
   </div>
 
-  <!-- Tabs -->
+  <!-- Type toggle: TV / Movies -->
+  <div class="flex gap-2 mb-4">
+    <button id="type-btn-tv" onclick="setDiscoverType('tv')"
+      class="text-sm px-4 py-1.5 rounded-full bg-blue-600 text-white font-medium transition">
+      TV Shows
+    </button>
+    <button id="type-btn-movies" onclick="setDiscoverType('movies')"
+      class="text-sm px-4 py-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition">
+      Movies
+    </button>
+  </div>
+
+  <!-- Category tabs -->
   <div class="flex gap-1 mb-6 bg-gray-900 p-1 rounded-xl border border-gray-800">
     <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg bg-gray-800 text-white font-medium transition"
-      hx-get="/discover/trending" hx-target="#discover-content" hx-swap="innerHTML">
-      Trending
-    </button>
+      onclick="loadDiscover('trending', this)">Trending</button>
     <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg text-gray-400 hover:text-white transition"
-      hx-get="/discover/similar" hx-target="#discover-content" hx-swap="innerHTML">
-      Similar
-    </button>
+      onclick="loadDiscover('similar', this)">Similar</button>
     <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg text-gray-400 hover:text-white transition"
-      hx-get="/discover/top" hx-target="#discover-content" hx-swap="innerHTML">
-      Top by Year
-    </button>
+      onclick="loadDiscover('top', this)">Top by Year</button>
   </div>
 
   <!-- Content -->
@@ -70,6 +76,39 @@
   </div>
 
   <script>
+    var discoverType = 'tv';
+    var discoverCategory = 'trending';
+
+    function setDiscoverType(type) {
+      discoverType = type;
+      var active = 'text-sm px-4 py-1.5 rounded-full bg-blue-600 text-white font-medium transition';
+      var inactive = 'text-sm px-4 py-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition';
+      document.getElementById('type-btn-tv').className = type === 'tv' ? active : inactive;
+      document.getElementById('type-btn-movies').className = type === 'movies' ? active : inactive;
+      loadContent();
+    }
+
+    function loadDiscover(category, btn) {
+      discoverCategory = category;
+      document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.remove('bg-gray-800', 'text-white', 'font-medium');
+        b.classList.add('text-gray-400');
+      });
+      if (btn) {
+        btn.classList.remove('text-gray-400');
+        btn.classList.add('bg-gray-800', 'text-white', 'font-medium');
+      }
+      loadContent();
+    }
+
+    function loadContent() {
+      var url = discoverType === 'tv'
+        ? '/discover/' + discoverCategory
+        : '/discover/movies/' + discoverCategory;
+      htmx.ajax('GET', url, {target: '#discover-content', swap: 'innerHTML'});
+      closeDiscoverModal();
+    }
+
     function openDiscoverModal(el) {
       document.getElementById('modal-name').textContent = el.dataset.name;
       document.getElementById('modal-overview').textContent = el.dataset.overview || 'No description available.';
@@ -82,7 +121,8 @@
       var rating = document.getElementById('modal-rating');
       if (el.dataset.rating) {
         rating.textContent = '★ ' + el.dataset.rating + ' on TMDB';
-        rating.href = 'https://www.themoviedb.org/tv/' + el.dataset.tmdbId;
+        var mediaPath = (el.dataset.mediaType === 'movie') ? 'movie' : 'tv';
+        rating.href = 'https://www.themoviedb.org/' + mediaPath + '/' + el.dataset.tmdbId;
       } else {
         rating.textContent = '';
       }
@@ -96,18 +136,6 @@
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') closeDiscoverModal();
-    });
-
-    document.querySelectorAll('.tab-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.tab-btn').forEach(function(b) {
-          b.classList.remove('bg-gray-800', 'text-white', 'font-medium');
-          b.classList.add('text-gray-400');
-        });
-        this.classList.remove('text-gray-400');
-        this.classList.add('bg-gray-800', 'text-white', 'font-medium');
-        closeDiscoverModal();
-      });
     });
   </script>
 

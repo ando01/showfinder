@@ -11,10 +11,10 @@
 <body class="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
 
   <!-- Header -->
-  <div class="flex items-center justify-between mb-8">
+  <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="text-3xl font-bold text-white">ShowFinder</h1>
-      <p class="text-gray-400 text-sm mt-1">Track your shows. Never miss an episode.</p>
+      <p class="text-gray-400 text-sm mt-1">Track your shows and movies.</p>
     </div>
     <div class="flex items-center gap-1 sm:gap-2">
       <a href="/discover" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Discover</a>
@@ -22,53 +22,13 @@
     </div>
   </div>
 
-  <!-- Today's Shows -->
-  <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-    <div class="flex items-baseline gap-3 mb-3">
-      <h2 class="text-lg font-semibold">On Today</h2>
-      <span class="text-gray-500 text-sm">{{ today_label }}</span>
-    </div>
-    {% if today_shows %}
-      <div class="grid gap-3">
-        {% for show in today_shows %}
-          <div class="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
-            {% if show.poster_path %}
-              <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
-            {% else %}
-              <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
-            {% endif %}
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-white leading-tight">{{ show.name }}</p>
-              <p class="text-sm text-gray-300 mt-0.5">
-                <span class="font-medium">{{ show.next_episode_number }}</span>
-                {% if show.next_episode_name %}<span class="text-gray-400"> — {{ show.next_episode_name }}</span>{% endif %}
-              </p>
-              {% if show.air_time %}
-                <p class="text-xs text-gray-500 mt-0.5">{{ show.air_time }}</p>
-              {% endif %}
-              {% if show._services %}
-                <div class="flex flex-wrap gap-1 mt-1.5">
-                  {% for svc in show._services %}
-                    <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="text-gray-500 text-sm">No tracked shows airing today.</p>
-    {% endif %}
-  </div>
-
-  <!-- Search -->
-  <div class="bg-gray-900 rounded-xl p-5 mb-8 border border-gray-800">
-    <h2 class="text-lg font-semibold mb-3">Add a Show</h2>
+  <!-- Unified Search -->
+  <div class="bg-gray-900 rounded-xl p-5 mb-6 border border-gray-800">
+    <h2 class="text-lg font-semibold mb-3">Add a Show or Movie</h2>
     <input
       type="text"
       name="q"
-      placeholder="Search for a TV show..."
+      placeholder="Search for a TV show or movie..."
       autocomplete="off"
       hx-get="/search"
       hx-trigger="keyup changed delay:400ms"
@@ -79,15 +39,136 @@
     <div id="search-results" class="mt-3"></div>
   </div>
 
-  <!-- Watchlist -->
-  <h2 class="text-lg font-semibold mb-4">Your Watchlist</h2>
-  <div id="watchlist" class="grid gap-4">
-    {% for show in shows %}
-      {% include "partials/show_card.html" %}
-    {% else %}
-      <p class="text-gray-500 text-sm">No shows yet. Search above to add one.</p>
-    {% endfor %}
+  <!-- TV / Movies tabs -->
+  <div class="flex gap-1 mb-6 bg-gray-900 p-1 rounded-xl border border-gray-800">
+    <button onclick="switchTab('tv')" id="tab-btn-tv"
+      class="flex-1 text-sm py-2 rounded-lg bg-gray-800 text-white font-medium transition">
+      TV Shows
+    </button>
+    <button onclick="switchTab('movies')" id="tab-btn-movies"
+      class="flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition">
+      Movies
+    </button>
   </div>
+
+  <!-- ── TV Tab ── -->
+  <div id="tv-content">
+
+    <!-- On Today -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
+      <div class="flex items-baseline gap-3 mb-3">
+        <h2 class="text-lg font-semibold">On Today</h2>
+        <span class="text-gray-500 text-sm">{{ today_label }}</span>
+      </div>
+      {% if today_shows %}
+        <div class="grid gap-3">
+          {% for show in today_shows %}
+            <div class="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
+              {% if show.poster_path %}
+                <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+              {% else %}
+                <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+              {% endif %}
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-white leading-tight">{{ show.name }}</p>
+                <p class="text-sm text-gray-300 mt-0.5">
+                  <span class="font-medium">{{ show.next_episode_number }}</span>
+                  {% if show.next_episode_name %}<span class="text-gray-400"> — {{ show.next_episode_name }}</span>{% endif %}
+                </p>
+                {% if show.air_time %}
+                  <p class="text-xs text-gray-500 mt-0.5">{{ show.air_time }}</p>
+                {% endif %}
+                {% if show._services %}
+                  <div class="flex flex-wrap gap-1 mt-1.5">
+                    {% for svc in show._services %}
+                      <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-500 text-sm">No tracked shows airing today.</p>
+      {% endif %}
+    </div>
+
+    <!-- TV Watchlist -->
+    <h2 class="text-lg font-semibold mb-4">Your Watchlist</h2>
+    <div id="watchlist" class="grid gap-4">
+      {% for show in shows %}
+        {% include "partials/show_card.html" %}
+      {% else %}
+        <p class="text-gray-500 text-sm">No shows yet. Search above to add one.</p>
+      {% endfor %}
+    </div>
+
+  </div><!-- end #tv-content -->
+
+  <!-- ── Movies Tab ── -->
+  <div id="movies-content" style="display:none">
+
+    <!-- Releasing This Week -->
+    {% if releasing_this_week %}
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
+        <h2 class="text-lg font-semibold mb-3">Releasing This Week</h2>
+        <div class="grid gap-3">
+          {% for movie in releasing_this_week %}
+            <div class="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
+              {% if movie.poster_path %}
+                <img src="{{ movie.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+              {% else %}
+                <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+              {% endif %}
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-white leading-tight">{{ movie.title }}</p>
+                {% if movie.release_date %}
+                  <p class="text-sm text-gray-300 mt-0.5">
+                    {% if movie.release_date.date() > today %}
+                      <span class="text-purple-300">{{ movie.release_date.strftime('%b %d, %Y') }}</span>
+                    {% else %}
+                      <span class="text-green-400">In theaters now</span>
+                      <span class="text-gray-500 ml-1">({{ movie.release_date.strftime('%b %d') }})</span>
+                    {% endif %}
+                  </p>
+                {% endif %}
+                {% if movie._services %}
+                  <div class="flex flex-wrap gap-1 mt-1.5">
+                    {% for svc in movie._services %}
+                      <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Movie List -->
+    <h2 class="text-lg font-semibold mb-4">Your Movies</h2>
+    <div id="movie-list" class="grid gap-4">
+      {% for movie in movies %}
+        {% include "partials/movie_card.html" %}
+      {% else %}
+        <p class="text-gray-500 text-sm">No movies yet. Search above to add one.</p>
+      {% endfor %}
+    </div>
+
+  </div><!-- end #movies-content -->
+
+  <script>
+    function switchTab(tab) {
+      document.getElementById('tv-content').style.display = tab === 'tv' ? '' : 'none';
+      document.getElementById('movies-content').style.display = tab === 'movies' ? '' : 'none';
+      var active = 'flex-1 text-sm py-2 rounded-lg bg-gray-800 text-white font-medium transition';
+      var inactive = 'flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition';
+      document.getElementById('tab-btn-tv').className = tab === 'tv' ? active : inactive;
+      document.getElementById('tab-btn-movies').className = tab === 'movies' ? active : inactive;
+    }
+  </script>
 
 </body>
 </html>

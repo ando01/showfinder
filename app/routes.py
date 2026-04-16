@@ -2,14 +2,14 @@ import asyncio
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
-from datetime import datetime, date
+from sqlmodel import Session, select, desc
+from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import json
 import os
 
 from app.database import get_session, get_setting, save_setting
-from app.models import TrackedShow
+from app.models import TrackedShow, TrackedMovie
 from app import tmdb
 from app.notifications import send_test_notification
 from app.config import DEFAULT_REMINDER_HOURS
@@ -31,18 +31,36 @@ def _local_today(session: Session) -> date:
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session: Session = Depends(get_session)):
-    shows = session.exec(select(TrackedShow).order_by(TrackedShow.next_episode_date)).all()
     today = _local_today(session)
+
+    # TV shows
+    shows = session.exec(select(TrackedShow).order_by(TrackedShow.next_episode_date)).all()
     today_shows = []
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
         if show.next_episode_date and show.next_episode_date.date() == today:
             today_shows.append(show)
+
+    # Movies
+    movies = session.exec(select(TrackedMovie).order_by(TrackedMovie.watched, desc(TrackedMovie.added_at))).all()
+    for movie in movies:
+        movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+
+    week_start = datetime.combine(today - timedelta(days=3), datetime.min.time())
+    week_end = datetime.combine(today + timedelta(days=14), datetime.max.time())
+    releasing_this_week = [
+        m for m in movies
+        if not m.watched and m.release_date and week_start <= m.release_date <= week_end
+    ]
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "shows": shows,
         "today_shows": today_shows,
         "today_label": today.strftime("%A, %B %d"),
+        "movies": movies,
+        "releasing_this_week": releasing_this_week,
+        "today": today,
     })
 
 
@@ -50,10 +68,18 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
 
 @router.get("/search", response_class=HTMLResponse)
 async def search(request: Request, q: str = ""):
-    results = []
+    show_results, movie_results = [], []
     if q:
-        results = await tmdb.search_shows(q)
-    return templates.TemplateResponse("partials/search_results.html", {"request": request, "results": results, "q": q})
+        show_results, movie_results = await asyncio.gather(
+            tmdb.search_shows(q),
+            tmdb.search_movies(q),
+        )
+    return templates.TemplateResponse("partials/search_results.html", {
+        "request": request,
+        "show_results": show_results,
+        "movie_results": movie_results,
+        "q": q,
+    })
 
 
 # ── Add show ───────────────────────────────────────────────────────────────────
@@ -165,6 +191,74 @@ async def save_settings(
     return HTMLResponse('<span class="text-green-400 text-sm">Settings saved.</span>')
 
 
+# ── Movies ─────────────────────────────────────────────────────────────────────
+
+@router.post("/movies/add", response_class=HTMLResponse)
+async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Form(""), session: Session = Depends(get_session)):
+    existing = session.exec(select(TrackedMovie).where(TrackedMovie.tmdb_id == tmdb_id)).first()
+    if existing:
+        if source == "discover":
+            return HTMLResponse('<span class="text-xs text-gray-500">✓ Added</span>')
+        return HTMLResponse('<p class="text-yellow-400 text-sm">Already in your movies.</p>')
+
+    details = await tmdb.get_movie_details(tmdb_id)
+    if not details:
+        return HTMLResponse('<p class="text-red-400 text-sm">Could not fetch movie details.</p>')
+
+    movie = TrackedMovie(**details, last_refreshed=datetime.utcnow())
+    session.add(movie)
+    session.commit()
+    session.refresh(movie)
+
+    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    if source == "discover":
+        return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
+    today = _local_today(session)
+    return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
+
+
+@router.delete("/movies/{movie_id}", response_class=HTMLResponse)
+async def remove_movie(movie_id: int, session: Session = Depends(get_session)):
+    movie = session.get(TrackedMovie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404)
+    session.delete(movie)
+    session.commit()
+    return HTMLResponse("")
+
+
+@router.post("/movies/{movie_id}/watched", response_class=HTMLResponse)
+async def toggle_watched(request: Request, movie_id: int, session: Session = Depends(get_session)):
+    movie = session.get(TrackedMovie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404)
+    movie.watched = not movie.watched
+    session.add(movie)
+    session.commit()
+    session.refresh(movie)
+    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    today = _local_today(session)
+    return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
+
+
+@router.post("/movies/{movie_id}/refresh", response_class=HTMLResponse)
+async def refresh_movie(request: Request, movie_id: int, session: Session = Depends(get_session)):
+    movie = session.get(TrackedMovie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404)
+    details = await tmdb.get_movie_details(movie.tmdb_id)
+    if details:
+        for key, val in details.items():
+            setattr(movie, key, val)
+        movie.last_refreshed = datetime.utcnow()
+        session.add(movie)
+        session.commit()
+        session.refresh(movie)
+    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    today = _local_today(session)
+    return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
+
+
 # ── Discover ───────────────────────────────────────────────────────────────────
 
 @router.get("/discover", response_class=HTMLResponse)
@@ -212,6 +306,56 @@ async def discover_top(request: Request, year: int = None, session: Session = De
     tracked_ids = {s.tmdb_id for s in session.exec(select(TrackedShow)).all()}
     current_year = _date.today().year
     return templates.TemplateResponse("partials/discover_top.html", {
+        "request": request,
+        "shows": shows,
+        "tracked_ids": tracked_ids,
+        "selected_year": year,
+        "years": list(range(current_year, 1999, -1)),
+    })
+
+
+# ── Discover — Movies ──────────────────────────────────────────────────────────
+
+@router.get("/discover/movies/trending", response_class=HTMLResponse)
+async def discover_movies_trending(request: Request, session: Session = Depends(get_session)):
+    shows = await tmdb.get_trending_movies()
+    tracked_ids = {m.tmdb_id for m in session.exec(select(TrackedMovie)).all()}
+    return templates.TemplateResponse("partials/discover_trending_movies.html", {
+        "request": request,
+        "shows": shows,
+        "tracked_ids": tracked_ids,
+    })
+
+
+@router.get("/discover/movies/similar", response_class=HTMLResponse)
+async def discover_movies_similar(request: Request, session: Session = Depends(get_session)):
+    tracked = session.exec(select(TrackedMovie)).all()
+    tracked_ids = {m.tmdb_id for m in tracked}
+
+    async def fetch_recs(movie):
+        recs = await tmdb.get_movie_recommendations(movie.tmdb_id)
+        filtered = [r for r in recs if r["tmdb_id"] not in tracked_ids]
+        return movie.title, filtered
+
+    results = await asyncio.gather(*[fetch_recs(m) for m in tracked[:10]])
+    sections = [(title, recs) for title, recs in results if recs]
+
+    return templates.TemplateResponse("partials/discover_similar_movies.html", {
+        "request": request,
+        "sections": sections,
+        "tracked_ids": tracked_ids,
+    })
+
+
+@router.get("/discover/movies/top", response_class=HTMLResponse)
+async def discover_movies_top(request: Request, year: int = None, session: Session = Depends(get_session)):
+    from datetime import date as _date
+    if year is None:
+        year = _date.today().year
+    shows = await tmdb.get_top_movies_by_year(year)
+    tracked_ids = {m.tmdb_id for m in session.exec(select(TrackedMovie)).all()}
+    current_year = _date.today().year
+    return templates.TemplateResponse("partials/discover_top_movies.html", {
         "request": request,
         "shows": shows,
         "tracked_ids": tracked_ids,

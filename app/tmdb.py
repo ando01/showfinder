@@ -1,4 +1,5 @@
 import httpx
+import json
 from typing import Optional
 from app.config import TMDB_API_KEY, TMDB_BASE_URL, TMDB_IMAGE_BASE
 
@@ -108,16 +109,20 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
         }
 
 
-def _format_discover_results(results: list) -> list[dict]:
+def _format_discover_results(results: list, media_type: str = "tv") -> list[dict]:
     out = []
     for s in results:
-        if not s.get("name"):
+        # TV uses "name", movies use "title"
+        name = s.get("name") if media_type == "tv" else s.get("title")
+        date = s.get("first_air_date") if media_type == "tv" else s.get("release_date")
+        if not name:
             continue
         out.append({
             "tmdb_id": s["id"],
-            "name": s["name"],
+            "name": name,
+            "media_type": media_type,
             "poster_path": f"{TMDB_IMAGE_BASE}{s['poster_path']}" if s.get("poster_path") else None,
-            "first_air_date": s.get("first_air_date", ""),
+            "first_air_date": date or "",
             "vote_average": round(s.get("vote_average", 0), 1) if s.get("vote_average") else None,
             "overview": s.get("overview", ""),
         })
@@ -162,6 +167,106 @@ async def get_top_by_year(year: int) -> list[dict]:
         )
         r.raise_for_status()
         return _format_discover_results(r.json().get("results", []))
+
+
+async def search_movies(query: str) -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/search/movie",
+            params=_auth_params({"query": query, "language": "en-US", "page": 1}),
+            headers=HEADERS,
+        )
+        r.raise_for_status()
+        results = r.json().get("results", [])
+        return [
+            {
+                "tmdb_id": s["id"],
+                "title": s["title"],
+                "overview": s.get("overview", ""),
+                "poster_path": f"{TMDB_IMAGE_BASE}{s['poster_path']}" if s.get("poster_path") else None,
+                "release_date": s.get("release_date", ""),
+            }
+            for s in results[:6]
+            if s.get("title")
+        ]
+
+
+async def get_movie_details(tmdb_id: int) -> Optional[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/movie/{tmdb_id}",
+            params=_auth_params({"language": "en-US", "append_to_response": "watch/providers"}),
+            headers=HEADERS,
+        )
+        if r.status_code != 200:
+            return None
+        data = r.json()
+
+    streaming = []
+    providers = data.get("watch/providers", {}).get("results", {}).get("US", {})
+    for p in providers.get("flatrate", []):
+        name = STREAMING_PROVIDER_IDS.get(p["provider_id"], p["provider_name"])
+        if name not in streaming:
+            streaming.append(name)
+
+    release_date = None
+    if data.get("release_date"):
+        from datetime import datetime
+        try:
+            release_date = datetime.strptime(data["release_date"], "%Y-%m-%d")
+        except Exception:
+            pass
+
+    return {
+        "tmdb_id": tmdb_id,
+        "title": data["title"],
+        "poster_path": f"{TMDB_IMAGE_BASE}{data['poster_path']}" if data.get("poster_path") else None,
+        "overview": data.get("overview"),
+        "status": data.get("status"),
+        "streaming_services": json.dumps(streaming) if streaming else None,
+        "runtime": data.get("runtime") or None,
+        "release_date": release_date,
+    }
+
+
+async def get_trending_movies() -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/trending/movie/week",
+            params=_auth_params({"language": "en-US"}),
+            headers=HEADERS,
+        )
+        r.raise_for_status()
+        return _format_discover_results(r.json().get("results", []), media_type="movie")
+
+
+async def get_movie_recommendations(tmdb_id: int) -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/movie/{tmdb_id}/recommendations",
+            params=_auth_params({"language": "en-US", "page": 1}),
+            headers=HEADERS,
+        )
+        if r.status_code != 200:
+            return []
+        return _format_discover_results(r.json().get("results", []), media_type="movie")
+
+
+async def get_top_movies_by_year(year: int) -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/discover/movie",
+            params=_auth_params({
+                "language": "en-US",
+                "sort_by": "popularity.desc",
+                "primary_release_year": year,
+                "vote_count.gte": 50,
+                "page": 1,
+            }),
+            headers=HEADERS,
+        )
+        r.raise_for_status()
+        return _format_discover_results(r.json().get("results", []), media_type="movie")
 
 
 def _day_from_date(date_str: Optional[str]) -> Optional[str]:

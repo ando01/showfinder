@@ -1,6 +1,6 @@
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
 
-  <!-- Clickable area: poster + title + year + rating → opens description modal -->
+  <!-- Clickable area → opens description modal -->
   <div class="cursor-pointer flex-1 flex flex-col hover:opacity-90 transition"
     onclick="openDiscoverModal(this)"
     data-name="{{ show.name }}"
@@ -9,6 +9,7 @@
     data-year="{{ show.first_air_date[:4] if show.first_air_date else '' }}"
     data-rating="{{ show.vote_average or '' }}"
     data-tmdb-id="{{ show.tmdb_id }}"
+    data-media-type="{{ show.media_type or 'tv' }}"
   >
     {% if show.poster_path %}
       <img src="{{ show.poster_path }}" alt="{{ show.name }}" class="w-full aspect-[2/3] object-cover" />
@@ -20,8 +21,8 @@
       <div class="flex items-center justify-between mt-1">
         <span class="text-xs text-gray-500">{{ show.first_air_date[:4] if show.first_air_date else '—' }}</span>
         {% if show.vote_average %}
-          <!-- Rating: stop propagation so it links out without opening modal -->
-          <a href="https://www.themoviedb.org/tv/{{ show.tmdb_id }}" target="_blank" rel="noopener"
+          <a href="https://www.themoviedb.org/{{ show.media_type or 'tv' }}/{{ show.tmdb_id }}"
+            target="_blank" rel="noopener"
             onclick="event.stopPropagation()"
             class="text-xs text-yellow-400 hover:text-yellow-300 transition">★ {{ show.vote_average }}</a>
         {% endif %}
@@ -29,15 +30,16 @@
     </div>
   </div>
 
-  <!-- Add button: separate from clickable area -->
+  <!-- Add button -->
   <div class="px-2 pb-2">
     {% if show.tmdb_id in tracked_ids %}
       <span class="text-xs text-gray-500 block text-center py-1">✓ Added</span>
     {% else %}
-      <form hx-post="/shows/add" hx-target="this" hx-swap="outerHTML">
+      <form hx-post="{% if show.media_type == 'movie' %}/movies/add{% else %}/shows/add{% endif %}"
+        hx-target="this" hx-swap="outerHTML">
         <input type="hidden" name="tmdb_id" value="{{ show.tmdb_id }}" />
         <input type="hidden" name="source" value="discover" />
-        <button type="submit" class="w-full text-xs bg-blue-600 hover:bg-blue-500 text-white py-1.5 rounded-lg transition">+ Add</button>
+        <button type="submit" class="w-full text-xs {% if show.media_type == 'movie' %}bg-purple-700 hover:bg-purple-600{% else %}bg-blue-600 hover:bg-blue-500{% endif %} text-white py-1.5 rounded-lg transition">+ Add</button>
       </form>
     {% endif %}
   </div>

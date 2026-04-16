@@ -1,25 +1,58 @@
-{% if results %}
-  <div class="grid gap-2">
-    {% for show in results %}
-      <div class="flex items-center gap-3 bg-gray-800 rounded-lg p-3 hover:bg-gray-750 transition">
-        {% if show.poster_path %}
-          <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded" />
-        {% else %}
-          <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
-        {% endif %}
-        <div class="flex-1 min-w-0">
-          <p class="font-medium text-white text-sm">{{ show.name }}</p>
-          <p class="text-gray-500 text-xs">{{ show.first_air_date[:4] if show.first_air_date else 'Unknown' }}</p>
-          <p class="text-gray-400 text-xs mt-0.5 truncate">{{ show.overview[:100] }}{% if show.overview|length > 100 %}…{% endif %}</p>
+{% if show_results or movie_results %}
+  <div class="space-y-4">
+
+    {% if show_results %}
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">TV Shows</p>
+        <div class="grid gap-2">
+          {% for show in show_results %}
+            <div class="flex items-center gap-3 bg-gray-800 rounded-lg p-3 transition">
+              {% if show.poster_path %}
+                <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+              {% else %}
+                <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+              {% endif %}
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-white text-sm">{{ show.name }}</p>
+                <p class="text-gray-500 text-xs">{{ show.first_air_date[:4] if show.first_air_date else 'Unknown' }}</p>
+                <p class="text-gray-400 text-xs mt-0.5 truncate">{{ show.overview[:100] }}{% if show.overview|length > 100 %}…{% endif %}</p>
+              </div>
+              <form hx-post="/shows/add" hx-target="#watchlist" hx-swap="beforeend">
+                <input type="hidden" name="tmdb_id" value="{{ show.tmdb_id }}" />
+                <button type="submit" class="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition flex-shrink-0">+ Add</button>
+              </form>
+            </div>
+          {% endfor %}
         </div>
-        <form hx-post="/shows/add" hx-target="#watchlist" hx-swap="beforeend">
-          <input type="hidden" name="tmdb_id" value="{{ show.tmdb_id }}" />
-          <button type="submit" class="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition flex-shrink-0">
-            + Add
-          </button>
-        </form>
       </div>
-    {% endfor %}
+    {% endif %}
+
+    {% if movie_results %}
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Movies</p>
+        <div class="grid gap-2">
+          {% for movie in movie_results %}
+            <div class="flex items-center gap-3 bg-gray-800 rounded-lg p-3 transition">
+              {% if movie.poster_path %}
+                <img src="{{ movie.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+              {% else %}
+                <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+              {% endif %}
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-white text-sm">{{ movie.title }}</p>
+                <p class="text-gray-500 text-xs">{{ movie.release_date[:4] if movie.release_date else 'Unknown' }}</p>
+                <p class="text-gray-400 text-xs mt-0.5 truncate">{{ movie.overview[:100] }}{% if movie.overview|length > 100 %}…{% endif %}</p>
+              </div>
+              <form hx-post="/movies/add" hx-target="#movie-list" hx-swap="beforeend">
+                <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}" />
+                <button type="submit" class="text-sm bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg transition flex-shrink-0">+ Add</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
   </div>
 {% elif q %}
   <p class="text-gray-500 text-sm">No results for "{{ q }}"</p>

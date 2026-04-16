@@ -1,0 +1,9 @@
+{% if shows %}
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+    {% for show in shows %}
+      {% include "partials/discover_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-gray-500 text-sm text-center py-16">No trending movies found.</p>
+{% endif %}
