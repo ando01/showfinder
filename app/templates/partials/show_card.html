@@ -23,6 +23,17 @@
 
     <!-- Status badge -->
     <div class="flex flex-wrap gap-2 mt-1 mb-2">
+      {% set ws = show.watch_status or 'watching' %}
+      <form hx-post="/shows/{{ show.id }}/status" hx-target="#show-{{ show.id }}" hx-swap="outerHTML" hx-trigger="change">
+        <select name="watch_status" class="text-xs rounded-full px-2 py-0.5 border-0 focus:outline-none cursor-pointer
+          {% if ws == 'watching' %}bg-teal-900 text-teal-300
+          {% elif ws == 'wishlist' %}bg-amber-900 text-amber-300
+          {% else %}bg-purple-900 text-purple-300{% endif %}">
+          <option value="watching" {% if ws == 'watching' %}selected{% endif %}>Watching</option>
+          <option value="wishlist" {% if ws == 'wishlist' %}selected{% endif %}>Wishlist</option>
+          <option value="completed" {% if ws == 'completed' %}selected{% endif %}>Completed</option>
+        </select>
+      </form>
       {% if show.status %}
         <span class="text-xs px-2 py-0.5 rounded-full
           {% if show.status == 'Returning Series' %}bg-green-900 text-green-300
@@ -39,11 +50,14 @@
       {% endif %}
     </div>
 
-    <!-- Streaming services -->
-    {% if show._services %}
+    <!-- Streaming services & genres -->
+    {% if show._services or show._genres %}
       <div class="flex flex-wrap gap-1 mb-2">
         {% for svc in show._services %}
           <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+        {% endfor %}
+        {% for genre in show._genres %}
+          <span class="text-xs px-2 py-0.5 bg-gray-700 text-gray-400 rounded-full">{{ genre }}</span>
         {% endfor %}
       </div>
     {% endif %}

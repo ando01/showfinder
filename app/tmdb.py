@@ -93,6 +93,7 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
             air_day = _day_from_date(next_ep.get("air_date"))
 
         import json
+        genre_names = [g["name"] for g in data.get("genres", [])]
         return {
             "tmdb_id": tmdb_id,
             "name": data["name"],
@@ -101,6 +102,7 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
             "status": data.get("status"),
             "network": ", ".join(networks) if networks else None,
             "streaming_services": json.dumps(streaming) if streaming else None,
+            "genres": json.dumps(genre_names) if genre_names else None,
             "air_day": air_day,
             "air_time": air_time,
             "next_episode_date": next_ep_date,

@@ -23,6 +23,8 @@ class TrackedShow(SQLModel, table=True):
     next_episode_name: Optional[str] = None
     next_episode_number: Optional[str] = None  # "S02E05"
     vote_average: Optional[float] = None
+    genres: Optional[str] = None               # JSON list of genre names
+    watch_status: Optional[str] = Field(default="watching")  # "watching" | "wishlist" | "completed"
     reminder_hours: int = Field(default=1)
     reminder_enabled: bool = Field(default=True)
     added_at: datetime = Field(default_factory=datetime.utcnow)

@@ -38,8 +38,10 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     today_shows = []
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
+        show._genres = json.loads(show.genres) if show.genres else []
         if show.next_episode_date and show.next_episode_date.date() == today:
             today_shows.append(show)
+    all_genres = sorted({g for show in shows for g in show._genres})
     shows = _sort_shows(shows, "next_episode")
 
     # Movies
@@ -63,6 +65,7 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
         "movies": movies,
         "releasing_this_week": releasing_this_week,
         "today": today,
+        "all_genres": all_genres,
     })
 
 
@@ -124,6 +127,7 @@ async def add_show(request: Request, tmdb_id: int = Form(...), source: str = For
     session.refresh(show)
 
     show._services = json.loads(show.streaming_services) if show.streaming_services else []
+    show._genres = json.loads(show.genres) if show.genres else []
     if source == "discover":
         return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
     if source == "search":
@@ -167,6 +171,27 @@ async def update_reminder(
     return HTMLResponse('<span class="text-green-400 text-sm">Saved</span>')
 
 
+# ── Update watch status ────────────────────────────────────────────────────────
+
+@router.post("/shows/{show_id}/status", response_class=HTMLResponse)
+async def update_show_status(
+    request: Request,
+    show_id: int,
+    watch_status: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    show = session.get(TrackedShow, show_id)
+    if not show:
+        raise HTTPException(status_code=404)
+    show.watch_status = watch_status
+    session.add(show)
+    session.commit()
+    session.refresh(show)
+    show._services = json.loads(show.streaming_services) if show.streaming_services else []
+    show._genres = json.loads(show.genres) if show.genres else []
+    return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
+
+
 # ── Manual refresh ─────────────────────────────────────────────────────────────
 
 @router.post("/shows/{show_id}/refresh", response_class=HTMLResponse)
@@ -183,6 +208,7 @@ async def refresh_show(request: Request, show_id: int, session: Session = Depend
         session.commit()
         session.refresh(show)
     show._services = json.loads(show.streaming_services) if show.streaming_services else []
+    show._genres = json.loads(show.genres) if show.genres else []
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
 
 
@@ -240,10 +266,21 @@ def _sort_movies(movies, sort: str):
 
 
 @router.get("/watchlist", response_class=HTMLResponse)
-async def watchlist_partial(request: Request, sort: str = "next_episode", session: Session = Depends(get_session)):
+async def watchlist_partial(
+    request: Request,
+    sort: str = "next_episode",
+    status: str = "all",
+    genre: str = "all",
+    session: Session = Depends(get_session),
+):
     shows = session.exec(select(TrackedShow)).all()
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
+        show._genres = json.loads(show.genres) if show.genres else []
+    if status != "all":
+        shows = [s for s in shows if (s.watch_status or "watching") == status]
+    if genre != "all":
+        shows = [s for s in shows if genre in show._genres]
     shows = _sort_shows(shows, sort)
     return templates.TemplateResponse("partials/tv_watchlist.html", {
         "request": request,

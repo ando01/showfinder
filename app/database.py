@@ -8,8 +8,10 @@ engine = create_engine(DATABASE_URL, echo=False)
 def _migrate(conn):
     """Add any columns that exist in models but are missing from the live DB."""
     migrations = [
-        ("trackedshow",  "vote_average", "REAL"),
-        ("trackedmovie", "vote_average", "REAL"),
+        ("trackedshow",  "vote_average",   "REAL"),
+        ("trackedmovie", "vote_average",   "REAL"),
+        ("trackedshow",  "genres",         "TEXT"),
+        ("trackedshow",  "watch_status",   "TEXT DEFAULT 'watching'"),
     ]
     for table, column, col_type in migrations:
         existing = [row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))]

@@ -97,7 +97,22 @@
     <!-- TV Watchlist -->
     <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
       <h2 class="text-lg font-semibold">Your Watchlist</h2>
-      <form hx-get="/watchlist" hx-target="#watchlist-inner" hx-swap="innerHTML" hx-trigger="change">
+      <form class="flex items-center gap-2 flex-wrap"
+        hx-get="/watchlist" hx-target="#watchlist-inner" hx-swap="innerHTML" hx-trigger="change">
+        <select name="status" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+          <option value="all">All Shows</option>
+          <option value="watching">Watching</option>
+          <option value="wishlist">Wishlist</option>
+          <option value="completed">Completed</option>
+        </select>
+        {% if all_genres %}
+        <select name="genre" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+          <option value="all">All Genres</option>
+          {% for genre in all_genres %}
+          <option value="{{ genre }}">{{ genre }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
         <select name="sort" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
           <option value="next_episode">Next Episode</option>
           <option value="name">Name A–Z</option>
