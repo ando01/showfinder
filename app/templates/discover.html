@@ -46,7 +46,58 @@
     <div class="text-center py-16 text-gray-500 text-sm">Loading...</div>
   </div>
 
+  <!-- Description modal -->
+  <div id="discover-modal"
+    style="display:none"
+    class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4"
+    onclick="if(event.target===this) closeDiscoverModal()">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden">
+      <div class="flex items-start gap-3 p-4 pb-3">
+        <img id="modal-poster" src="" alt="" class="w-16 h-24 object-cover rounded-lg flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <h3 id="modal-name" class="text-white font-semibold leading-tight pr-2"></h3>
+          <div class="flex items-center gap-3 mt-1.5">
+            <span id="modal-year" class="text-gray-500 text-sm"></span>
+            <a id="modal-rating" href="" target="_blank" rel="noopener"
+              class="text-yellow-400 text-sm hover:text-yellow-300 transition"></a>
+          </div>
+        </div>
+        <button onclick="closeDiscoverModal()"
+          class="text-gray-500 hover:text-white text-2xl leading-none flex-shrink-0 -mt-0.5">×</button>
+      </div>
+      <p id="modal-overview" class="text-gray-400 text-sm px-4 pb-5 leading-relaxed"></p>
+    </div>
+  </div>
+
   <script>
+    function openDiscoverModal(el) {
+      document.getElementById('modal-name').textContent = el.dataset.name;
+      document.getElementById('modal-overview').textContent = el.dataset.overview || 'No description available.';
+      document.getElementById('modal-year').textContent = el.dataset.year;
+
+      var poster = document.getElementById('modal-poster');
+      poster.src = el.dataset.poster || '';
+      poster.style.display = el.dataset.poster ? '' : 'none';
+
+      var rating = document.getElementById('modal-rating');
+      if (el.dataset.rating) {
+        rating.textContent = '★ ' + el.dataset.rating + ' on TMDB';
+        rating.href = 'https://www.themoviedb.org/tv/' + el.dataset.tmdbId;
+      } else {
+        rating.textContent = '';
+      }
+
+      document.getElementById('discover-modal').style.display = 'flex';
+    }
+
+    function closeDiscoverModal() {
+      document.getElementById('discover-modal').style.display = 'none';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeDiscoverModal();
+    });
+
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         document.querySelectorAll('.tab-btn').forEach(function(b) {
@@ -55,6 +106,7 @@
         });
         this.classList.remove('text-gray-400');
         this.classList.add('bg-gray-800', 'text-white', 'font-medium');
+        closeDiscoverModal();
       });
     });
   </script>
