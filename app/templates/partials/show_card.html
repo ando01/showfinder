@@ -34,6 +34,9 @@
       {% if show.network %}
         <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">{{ show.network }}</span>
       {% endif %}
+      {% if show.vote_average %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-yellow-400">★ {{ show.vote_average }}</span>
+      {% endif %}
     </div>
 
     <!-- Streaming services -->

@@ -35,6 +35,9 @@
           {{ movie.runtime // 60 }}h{% if movie.runtime % 60 > 0 %} {{ movie.runtime % 60 }}m{% endif %}
         </span>
       {% endif %}
+      {% if movie.vote_average %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-yellow-400">★ {{ movie.vote_average }}</span>
+      {% endif %}
     </div>
 
     <!-- Streaming services -->

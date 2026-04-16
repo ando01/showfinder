@@ -34,17 +34,19 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     today = _local_today(session)
 
     # TV shows
-    shows = session.exec(select(TrackedShow).order_by(TrackedShow.next_episode_date)).all()
+    shows = session.exec(select(TrackedShow)).all()
     today_shows = []
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
         if show.next_episode_date and show.next_episode_date.date() == today:
             today_shows.append(show)
+    shows = _sort_shows(shows, "next_episode")
 
     # Movies
-    movies = session.exec(select(TrackedMovie).order_by(TrackedMovie.watched, desc(TrackedMovie.added_at))).all()
+    movies = session.exec(select(TrackedMovie)).all()
     for movie in movies:
         movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    movies = _sort_movies(movies, "release_date")
 
     week_start = datetime.combine(today - timedelta(days=3), datetime.min.time())
     week_end = datetime.combine(today + timedelta(days=14), datetime.max.time())
@@ -189,6 +191,58 @@ async def save_settings(
     save_setting(session, "ntfy_topic", ntfy_topic.strip())
     save_setting(session, "timezone", timezone.strip())
     return HTMLResponse('<span class="text-green-400 text-sm">Settings saved.</span>')
+
+
+# ── Watchlist filter/sort ──────────────────────────────────────────────────────
+
+def _sort_shows(shows, sort: str):
+    if sort == "name":
+        return sorted(shows, key=lambda s: s.name.lower())
+    if sort == "date_added":
+        return sorted(shows, key=lambda s: s.added_at, reverse=True)
+    if sort == "rating":
+        return sorted(shows, key=lambda s: s.vote_average or 0, reverse=True)
+    # default: next_episode
+    return sorted(shows, key=lambda s: s.next_episode_date or datetime.max)
+
+
+def _sort_movies(movies, sort: str):
+    if sort == "name":
+        return sorted(movies, key=lambda m: m.title.lower())
+    if sort == "date_added":
+        return sorted(movies, key=lambda m: m.added_at, reverse=True)
+    if sort == "rating":
+        return sorted(movies, key=lambda m: m.vote_average or 0, reverse=True)
+    # default: release_date, watched items last
+    return sorted(movies, key=lambda m: (m.watched, m.release_date or datetime.max))
+
+
+@router.get("/watchlist", response_class=HTMLResponse)
+async def watchlist_partial(request: Request, sort: str = "next_episode", session: Session = Depends(get_session)):
+    shows = session.exec(select(TrackedShow)).all()
+    for show in shows:
+        show._services = json.loads(show.streaming_services) if show.streaming_services else []
+    shows = _sort_shows(shows, sort)
+    return templates.TemplateResponse("partials/tv_watchlist.html", {
+        "request": request,
+        "shows": shows,
+    })
+
+
+@router.get("/movie-list", response_class=HTMLResponse)
+async def movie_list_partial(request: Request, sort: str = "release_date", hide_watched: bool = False, session: Session = Depends(get_session)):
+    today = _local_today(session)
+    movies = session.exec(select(TrackedMovie)).all()
+    for movie in movies:
+        movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    if hide_watched:
+        movies = [m for m in movies if not m.watched]
+    movies = _sort_movies(movies, sort)
+    return templates.TemplateResponse("partials/movie_list.html", {
+        "request": request,
+        "movies": movies,
+        "today": today,
+    })
 
 
 # ── Movies ─────────────────────────────────────────────────────────────────────

@@ -106,6 +106,7 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
             "next_episode_date": next_ep_date,
             "next_episode_name": next_ep_name,
             "next_episode_number": next_ep_number,
+            "vote_average": round(data["vote_average"], 1) if data.get("vote_average") else None,
         }
 
 
@@ -226,6 +227,7 @@ async def get_movie_details(tmdb_id: int) -> Optional[dict]:
         "streaming_services": json.dumps(streaming) if streaming else None,
         "runtime": data.get("runtime") or None,
         "release_date": release_date,
+        "vote_average": round(data["vote_average"], 1) if data.get("vote_average") else None,
     }
 
 

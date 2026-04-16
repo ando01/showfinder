@@ -95,13 +95,19 @@
     </div>
 
     <!-- TV Watchlist -->
-    <h2 class="text-lg font-semibold mb-4">Your Watchlist</h2>
-    <div id="watchlist" class="grid gap-4">
-      {% for show in shows %}
-        {% include "partials/show_card.html" %}
-      {% else %}
-        <p class="text-gray-500 text-sm">No shows yet. Search above to add one.</p>
-      {% endfor %}
+    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <h2 class="text-lg font-semibold">Your Watchlist</h2>
+      <form hx-get="/watchlist" hx-target="#watchlist-inner" hx-swap="innerHTML" hx-trigger="change">
+        <select name="sort" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+          <option value="next_episode">Next Episode</option>
+          <option value="name">Name A–Z</option>
+          <option value="date_added">Date Added</option>
+          <option value="rating">Rating</option>
+        </select>
+      </form>
+    </div>
+    <div id="watchlist-inner" class="grid gap-4">
+      {% include "partials/tv_watchlist.html" %}
     </div>
 
   </div><!-- end #tv-content -->
@@ -148,13 +154,24 @@
     {% endif %}
 
     <!-- Movie List -->
-    <h2 class="text-lg font-semibold mb-4">Your Movies</h2>
-    <div id="movie-list" class="grid gap-4">
-      {% for movie in movies %}
-        {% include "partials/movie_card.html" %}
-      {% else %}
-        <p class="text-gray-500 text-sm">No movies yet. Search above to add one.</p>
-      {% endfor %}
+    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <h2 class="text-lg font-semibold">Your Movies</h2>
+      <form class="flex items-center gap-3 flex-wrap"
+        hx-get="/movie-list" hx-target="#movie-list-inner" hx-swap="innerHTML" hx-trigger="change">
+        <select name="sort" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+          <option value="release_date">Release Date</option>
+          <option value="name">Name A–Z</option>
+          <option value="date_added">Date Added</option>
+          <option value="rating">Rating</option>
+        </select>
+        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
+          <input type="checkbox" name="hide_watched" value="true" class="accent-blue-500" />
+          Hide watched
+        </label>
+      </form>
+    </div>
+    <div id="movie-list-inner" class="grid gap-4">
+      {% include "partials/movie_list.html" %}
     </div>
 
   </div><!-- end #movies-content -->

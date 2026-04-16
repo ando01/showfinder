@@ -1,0 +1,5 @@
+{% for movie in movies %}
+  {% include "partials/movie_card.html" %}
+{% else %}
+  <p class="text-gray-500 text-sm">No movies yet. Search above to add one.</p>
+{% endfor %}

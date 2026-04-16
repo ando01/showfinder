@@ -1,0 +1,5 @@
+{% for show in shows %}
+  {% include "partials/show_card.html" %}
+{% else %}
+  <p class="text-gray-500 text-sm">No shows yet. Search above to add one.</p>
+{% endfor %}

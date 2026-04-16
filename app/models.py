@@ -22,6 +22,7 @@ class TrackedShow(SQLModel, table=True):
     next_episode_date: Optional[datetime] = None
     next_episode_name: Optional[str] = None
     next_episode_number: Optional[str] = None  # "S02E05"
+    vote_average: Optional[float] = None
     reminder_hours: int = Field(default=1)
     reminder_enabled: bool = Field(default=True)
     added_at: datetime = Field(default_factory=datetime.utcnow)
@@ -38,6 +39,7 @@ class TrackedMovie(SQLModel, table=True):
     status: Optional[str] = None          # "Released", "In Production", etc.
     streaming_services: Optional[str] = None  # JSON list of service names
     runtime: Optional[int] = None         # minutes
+    vote_average: Optional[float] = None
     watched: bool = Field(default=False)
     added_at: datetime = Field(default_factory=datetime.utcnow)
     last_refreshed: Optional[datetime] = None
