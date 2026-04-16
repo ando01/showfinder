@@ -1,10 +1,10 @@
-<div id="show-{{ show.id }}" class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex gap-4 p-4">
+<div id="show-{{ show.id }}" class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex gap-3 sm:gap-4 p-3 sm:p-4">
 
   <!-- Poster -->
   {% if show.poster_path %}
-    <img src="{{ show.poster_path }}" alt="{{ show.name }}" class="w-16 h-24 object-cover rounded-lg flex-shrink-0" />
+    <img src="{{ show.poster_path }}" alt="{{ show.name }}" class="w-12 h-[72px] sm:w-16 sm:h-24 object-cover rounded-lg flex-shrink-0" />
   {% else %}
-    <div class="w-16 h-24 bg-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-600 text-xs text-center">No Image</div>
+    <div class="w-12 h-[72px] sm:w-16 sm:h-24 bg-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-600 text-xs text-center">No Image</div>
   {% endif %}
 
   <!-- Info -->
@@ -49,10 +49,12 @@
     {% if show.next_episode_date %}
       <p class="text-sm text-gray-300">
         <span class="font-medium text-white">{{ show.next_episode_number }}</span>
-        {% if show.next_episode_name %} — {{ show.next_episode_name }}{% endif %}
-        <span class="text-gray-500 ml-2">{{ show.next_episode_date.strftime('%b %d, %Y') }}</span>
-        {% if show.air_day %}<span class="text-gray-500"> ({{ show.air_day }})</span>{% endif %}
+        <span class="text-gray-500 ml-1.5">{{ show.next_episode_date.strftime('%b %d, %Y') }}</span>
+        {% if show.air_day %}<span class="text-gray-500"> · {{ show.air_day }}</span>{% endif %}
       </p>
+      {% if show.next_episode_name %}
+        <p class="text-xs text-gray-400 mt-0.5 truncate">{{ show.next_episode_name }}</p>
+      {% endif %}
     {% elif show.status == 'Ended' %}
       <p class="text-sm text-gray-500">Series ended</p>
     {% else %}
