@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- TV body -->
+  <rect x="3" y="8" width="26" height="18" rx="3" fill="#1e40af"/>
+  <!-- Screen -->
+  <rect x="6" y="11" width="20" height="12" rx="1.5" fill="#0f172a"/>
+  <!-- Play triangle -->
+  <polygon points="13,14 13,20 20,17" fill="#60a5fa"/>
+  <!-- Antenna left -->
+  <line x1="11" y1="8" x2="8" y2="3" stroke="#1e40af" stroke-width="2" stroke-linecap="round"/>
+  <!-- Antenna right -->
+  <line x1="21" y1="8" x2="24" y2="3" stroke="#1e40af" stroke-width="2" stroke-linecap="round"/>
+</svg>
