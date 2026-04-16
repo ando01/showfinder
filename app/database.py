@@ -4,8 +4,23 @@ from app.config import DATABASE_URL
 engine = create_engine(DATABASE_URL, echo=False)
 
 
+def _migrate(conn):
+    """Add any columns that exist in models but are missing from the live DB."""
+    migrations = [
+        ("trackedshow",  "vote_average", "REAL"),
+        ("trackedmovie", "vote_average", "REAL"),
+    ]
+    for table, column, col_type in migrations:
+        existing = [row[1] for row in conn.execute(f"PRAGMA table_info({table})")]
+        if existing and column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+
+
 def create_db():
     SQLModel.metadata.create_all(engine)
+    with engine.connect() as conn:
+        _migrate(conn)
+        conn.commit()
 
 
 def get_session():
