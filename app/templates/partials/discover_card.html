@@ -1,0 +1,25 @@
+<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+  {% if show.poster_path %}
+    <img src="{{ show.poster_path }}" alt="{{ show.name }}" class="w-full aspect-[2/3] object-cover" />
+  {% else %}
+    <div class="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center text-gray-600 text-xs">No Image</div>
+  {% endif %}
+  <div class="p-2 flex flex-col flex-1">
+    <p class="font-medium text-sm text-white leading-tight line-clamp-2 flex-1 mb-1">{{ show.name }}</p>
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-gray-500">{{ show.first_air_date[:4] if show.first_air_date else '—' }}</span>
+      {% if show.vote_average %}
+        <span class="text-xs text-yellow-400">★ {{ show.vote_average }}</span>
+      {% endif %}
+    </div>
+    {% if show.tmdb_id in tracked_ids %}
+      <span class="text-xs text-gray-500 text-center py-1">✓ Added</span>
+    {% else %}
+      <form hx-post="/shows/add" hx-target="this" hx-swap="outerHTML">
+        <input type="hidden" name="tmdb_id" value="{{ show.tmdb_id }}" />
+        <input type="hidden" name="source" value="discover" />
+        <button type="submit" class="w-full text-xs bg-blue-600 hover:bg-blue-500 text-white py-1.5 rounded-lg transition">+ Add</button>
+      </form>
+    {% endif %}
+  </div>
+</div>

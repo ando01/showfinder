@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -58,9 +59,11 @@ async def search(request: Request, q: str = ""):
 # ── Add show ───────────────────────────────────────────────────────────────────
 
 @router.post("/shows/add", response_class=HTMLResponse)
-async def add_show(request: Request, tmdb_id: int = Form(...), session: Session = Depends(get_session)):
+async def add_show(request: Request, tmdb_id: int = Form(...), source: str = Form(""), session: Session = Depends(get_session)):
     existing = session.exec(select(TrackedShow).where(TrackedShow.tmdb_id == tmdb_id)).first()
     if existing:
+        if source == "discover":
+            return HTMLResponse('<span class="text-xs text-gray-500">✓ Added</span>')
         return HTMLResponse('<p class="text-yellow-400">Already in your watchlist.</p>')
 
     details = await tmdb.get_show_details(tmdb_id)
@@ -77,6 +80,8 @@ async def add_show(request: Request, tmdb_id: int = Form(...), session: Session 
     session.refresh(show)
 
     show._services = json.loads(show.streaming_services) if show.streaming_services else []
+    if source == "discover":
+        return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
 
 
@@ -158,6 +163,61 @@ async def save_settings(
     save_setting(session, "ntfy_topic", ntfy_topic.strip())
     save_setting(session, "timezone", timezone.strip())
     return HTMLResponse('<span class="text-green-400 text-sm">Settings saved.</span>')
+
+
+# ── Discover ───────────────────────────────────────────────────────────────────
+
+@router.get("/discover", response_class=HTMLResponse)
+async def discover_page(request: Request):
+    return templates.TemplateResponse("discover.html", {"request": request})
+
+
+@router.get("/discover/trending", response_class=HTMLResponse)
+async def discover_trending(request: Request, session: Session = Depends(get_session)):
+    shows = await tmdb.get_trending()
+    tracked_ids = {s.tmdb_id for s in session.exec(select(TrackedShow)).all()}
+    return templates.TemplateResponse("partials/discover_trending.html", {
+        "request": request,
+        "shows": shows,
+        "tracked_ids": tracked_ids,
+    })
+
+
+@router.get("/discover/similar", response_class=HTMLResponse)
+async def discover_similar(request: Request, session: Session = Depends(get_session)):
+    tracked = session.exec(select(TrackedShow)).all()
+    tracked_ids = {s.tmdb_id for s in tracked}
+
+    async def fetch_recs(show):
+        recs = await tmdb.get_recommendations(show.tmdb_id)
+        filtered = [r for r in recs if r["tmdb_id"] not in tracked_ids]
+        return show.name, filtered
+
+    results = await asyncio.gather(*[fetch_recs(s) for s in tracked[:10]])
+    sections = [(name, shows) for name, shows in results if shows]
+
+    return templates.TemplateResponse("partials/discover_similar.html", {
+        "request": request,
+        "sections": sections,
+        "tracked_ids": tracked_ids,
+    })
+
+
+@router.get("/discover/top", response_class=HTMLResponse)
+async def discover_top(request: Request, year: int = None, session: Session = Depends(get_session)):
+    from datetime import date as _date
+    if year is None:
+        year = _date.today().year
+    shows = await tmdb.get_top_by_year(year)
+    tracked_ids = {s.tmdb_id for s in session.exec(select(TrackedShow)).all()}
+    current_year = _date.today().year
+    return templates.TemplateResponse("partials/discover_top.html", {
+        "request": request,
+        "shows": shows,
+        "tracked_ids": tracked_ids,
+        "selected_year": year,
+        "years": list(range(current_year, 1999, -1)),
+    })
 
 
 # ── Test notification ──────────────────────────────────────────────────────────

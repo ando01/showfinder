@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-950 text-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discover — ShowFinder</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-white">ShowFinder</h1>
+      <p class="text-gray-400 text-sm mt-1">Discover new shows</p>
+    </div>
+    <div class="flex items-center gap-1 sm:gap-2">
+      <a href="/" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Watchlist</a>
+      <a href="/settings" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Settings</a>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-1 mb-6 bg-gray-900 p-1 rounded-xl border border-gray-800">
+    <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg bg-gray-800 text-white font-medium transition"
+      hx-get="/discover/trending" hx-target="#discover-content" hx-swap="innerHTML">
+      Trending
+    </button>
+    <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg text-gray-400 hover:text-white transition"
+      hx-get="/discover/similar" hx-target="#discover-content" hx-swap="innerHTML">
+      Similar
+    </button>
+    <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg text-gray-400 hover:text-white transition"
+      hx-get="/discover/top" hx-target="#discover-content" hx-swap="innerHTML">
+      Top by Year
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div id="discover-content"
+    hx-get="/discover/trending"
+    hx-trigger="load"
+    hx-swap="innerHTML">
+    <div class="text-center py-16 text-gray-500 text-sm">Loading...</div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(function(b) {
+          b.classList.remove('bg-gray-800', 'text-white', 'font-medium');
+          b.classList.add('text-gray-400');
+        });
+        this.classList.remove('text-gray-400');
+        this.classList.add('bg-gray-800', 'text-white', 'font-medium');
+      });
+    });
+  </script>
+
+</body>
+</html>

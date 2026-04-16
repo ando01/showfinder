@@ -108,6 +108,62 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
         }
 
 
+def _format_discover_results(results: list) -> list[dict]:
+    out = []
+    for s in results:
+        if not s.get("name"):
+            continue
+        out.append({
+            "tmdb_id": s["id"],
+            "name": s["name"],
+            "poster_path": f"{TMDB_IMAGE_BASE}{s['poster_path']}" if s.get("poster_path") else None,
+            "first_air_date": s.get("first_air_date", ""),
+            "vote_average": round(s.get("vote_average", 0), 1) if s.get("vote_average") else None,
+            "overview": s.get("overview", ""),
+        })
+    return out
+
+
+async def get_trending() -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/trending/tv/week",
+            params=_auth_params({"language": "en-US"}),
+            headers=HEADERS,
+        )
+        r.raise_for_status()
+        return _format_discover_results(r.json().get("results", []))
+
+
+async def get_recommendations(tmdb_id: int) -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/tv/{tmdb_id}/recommendations",
+            params=_auth_params({"language": "en-US", "page": 1}),
+            headers=HEADERS,
+        )
+        if r.status_code != 200:
+            return []
+        return _format_discover_results(r.json().get("results", []))
+
+
+async def get_top_by_year(year: int) -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/discover/tv",
+            params=_auth_params({
+                "language": "en-US",
+                "sort_by": "popularity.desc",
+                "first_air_date_year": year,
+                "vote_count.gte": 50,
+                "page": 1,
+            }),
+            headers=HEADERS,
+        )
+        r.raise_for_status()
+        return _format_discover_results(r.json().get("results", []))
+
+
 def _day_from_date(date_str: Optional[str]) -> Optional[str]:
     if not date_str:
         return None
