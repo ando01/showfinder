@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, create_engine, Session
+from sqlalchemy import text
 from app.config import DATABASE_URL
 
 engine = create_engine(DATABASE_URL, echo=False)
@@ -11,9 +12,9 @@ def _migrate(conn):
         ("trackedmovie", "vote_average", "REAL"),
     ]
     for table, column, col_type in migrations:
-        existing = [row[1] for row in conn.execute(f"PRAGMA table_info({table})")]
+        existing = [row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))]
         if existing and column not in existing:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
 
 
 def create_db():
