@@ -3,7 +3,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from datetime import datetime, date
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import json
+import os
 
 from app.database import get_session, get_setting, save_setting
 from app.models import TrackedShow
@@ -17,10 +19,19 @@ templates = Jinja2Templates(directory="app/templates")
 
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
+def _local_today(session: Session) -> date:
+    tz_name = get_setting(session, "timezone") or os.getenv("TZ", "UTC")
+    try:
+        tz = ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError:
+        tz = ZoneInfo("UTC")
+    return datetime.now(tz=tz).date()
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session: Session = Depends(get_session)):
     shows = session.exec(select(TrackedShow).order_by(TrackedShow.next_episode_date)).all()
-    today = date.today()
+    today = _local_today(session)
     today_shows = []
     for show in shows:
         show._services = json.loads(show.streaming_services) if show.streaming_services else []
@@ -126,10 +137,12 @@ async def refresh_show(request: Request, show_id: int, session: Session = Depend
 async def settings_page(request: Request, session: Session = Depends(get_session)):
     ntfy_url = get_setting(session, "ntfy_url")
     ntfy_topic = get_setting(session, "ntfy_topic")
+    timezone = get_setting(session, "timezone") or os.getenv("TZ", "UTC")
     return templates.TemplateResponse("settings.html", {
         "request": request,
         "ntfy_url": ntfy_url,
         "ntfy_topic": ntfy_topic,
+        "timezone": timezone,
     })
 
 
@@ -138,10 +151,12 @@ async def save_settings(
     request: Request,
     ntfy_url: str = Form(...),
     ntfy_topic: str = Form(...),
+    timezone: str = Form(...),
     session: Session = Depends(get_session),
 ):
     save_setting(session, "ntfy_url", ntfy_url.strip())
     save_setting(session, "ntfy_topic", ntfy_topic.strip())
+    save_setting(session, "timezone", timezone.strip())
     return HTMLResponse('<span class="text-green-400 text-sm">Settings saved.</span>')
 
 

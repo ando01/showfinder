@@ -9,6 +9,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=sqlite:///./data/showfinder.db
+      - TZ=${TZ:-UTC}
     dns:
       - ${DNS_SERVER}
     restart: unless-stopped
