@@ -17,10 +17,18 @@
                 <p class="text-gray-500 text-xs">{{ show.first_air_date[:4] if show.first_air_date else 'Unknown' }}</p>
                 <p class="text-gray-400 text-xs mt-0.5 truncate">{{ show.overview[:100] }}{% if show.overview|length > 100 %}…{% endif %}</p>
               </div>
-              <form hx-post="/shows/add" hx-target="#watchlist-inner" hx-swap="beforeend">
-                <input type="hidden" name="tmdb_id" value="{{ show.tmdb_id }}" />
-                <button type="submit" class="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition flex-shrink-0">+ Add</button>
-              </form>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button
+                  hx-get="/trailer/tv/{{ show.tmdb_id }}"
+                  hx-target="#trailer-frame"
+                  hx-swap="innerHTML"
+                  class="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-2.5 py-1.5 rounded-lg transition">▶</button>
+                <form hx-post="/shows/add" hx-target="this" hx-swap="outerHTML">
+                  <input type="hidden" name="tmdb_id" value="{{ show.tmdb_id }}" />
+                  <input type="hidden" name="source" value="search" />
+                  <button type="submit" class="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition">+ Add</button>
+                </form>
+              </div>
             </div>
           {% endfor %}
         </div>
@@ -43,10 +51,18 @@
                 <p class="text-gray-500 text-xs">{{ movie.release_date[:4] if movie.release_date else 'Unknown' }}</p>
                 <p class="text-gray-400 text-xs mt-0.5 truncate">{{ movie.overview[:100] }}{% if movie.overview|length > 100 %}…{% endif %}</p>
               </div>
-              <form hx-post="/movies/add" hx-target="#movie-list-inner" hx-swap="beforeend">
-                <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}" />
-                <button type="submit" class="text-sm bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg transition flex-shrink-0">+ Add</button>
-              </form>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button
+                  hx-get="/trailer/movie/{{ movie.tmdb_id }}"
+                  hx-target="#trailer-frame"
+                  hx-swap="innerHTML"
+                  class="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-2.5 py-1.5 rounded-lg transition">▶</button>
+                <form hx-post="/movies/add" hx-target="this" hx-swap="outerHTML">
+                  <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}" />
+                  <input type="hidden" name="source" value="search" />
+                  <button type="submit" class="text-sm bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg transition">+ Add</button>
+                </form>
+              </div>
             </div>
           {% endfor %}
         </div>

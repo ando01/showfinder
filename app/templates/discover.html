@@ -52,6 +52,19 @@
     <div class="text-center py-16 text-gray-500 text-sm">Loading...</div>
   </div>
 
+  <!-- Trailer modal -->
+  <div id="trailer-modal" style="display:none"
+    class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+    onclick="if(event.target===this) closeTrailerModal()">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+        <span class="text-sm font-medium text-gray-300">Trailer</span>
+        <button onclick="closeTrailerModal()" class="text-gray-500 hover:text-white text-2xl leading-none">×</button>
+      </div>
+      <div id="trailer-frame"></div>
+    </div>
+  </div>
+
   <!-- Description modal -->
   <div id="discover-modal"
     style="display:none"
@@ -62,10 +75,13 @@
         <img id="modal-poster" src="" alt="" class="w-16 h-24 object-cover rounded-lg flex-shrink-0" />
         <div class="flex-1 min-w-0">
           <h3 id="modal-name" class="text-white font-semibold leading-tight pr-2"></h3>
-          <div class="flex items-center gap-3 mt-1.5">
+          <div class="flex items-center gap-3 mt-1.5 flex-wrap">
             <span id="modal-year" class="text-gray-500 text-sm"></span>
             <a id="modal-rating" href="" target="_blank" rel="noopener"
               class="text-yellow-400 text-sm hover:text-yellow-300 transition"></a>
+            <button id="modal-trailer-btn"
+              hx-target="#trailer-frame" hx-swap="innerHTML"
+              class="text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-2.5 py-1 rounded-lg transition">▶ Trailer</button>
           </div>
         </div>
         <button onclick="closeDiscoverModal()"
@@ -119,13 +135,18 @@
       poster.style.display = el.dataset.poster ? '' : 'none';
 
       var rating = document.getElementById('modal-rating');
+      var mediaPath = (el.dataset.mediaType === 'movie') ? 'movie' : 'tv';
       if (el.dataset.rating) {
         rating.textContent = '★ ' + el.dataset.rating + ' on TMDB';
-        var mediaPath = (el.dataset.mediaType === 'movie') ? 'movie' : 'tv';
         rating.href = 'https://www.themoviedb.org/' + mediaPath + '/' + el.dataset.tmdbId;
       } else {
         rating.textContent = '';
       }
+
+      // Wire up trailer button for this specific show/movie
+      var trailerBtn = document.getElementById('modal-trailer-btn');
+      trailerBtn.setAttribute('hx-get', '/trailer/' + mediaPath + '/' + el.dataset.tmdbId);
+      htmx.process(trailerBtn);
 
       document.getElementById('discover-modal').style.display = 'flex';
     }
@@ -134,8 +155,22 @@
       document.getElementById('discover-modal').style.display = 'none';
     }
 
+    function closeTrailerModal() {
+      document.getElementById('trailer-modal').style.display = 'none';
+      document.getElementById('trailer-frame').innerHTML = '';
+    }
+
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeDiscoverModal();
+      if (e.key === 'Escape') {
+        closeTrailerModal();
+        closeDiscoverModal();
+      }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+      if (e.detail.target && e.detail.target.id === 'trailer-frame') {
+        document.getElementById('trailer-modal').style.display = 'flex';
+      }
     });
   </script>
 

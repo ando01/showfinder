@@ -271,6 +271,30 @@ async def get_top_movies_by_year(year: int) -> list[dict]:
         return _format_discover_results(r.json().get("results", []), media_type="movie")
 
 
+async def get_trailer_key(tmdb_id: int, media_type: str) -> Optional[str]:
+    """Return a YouTube video key for the best available trailer."""
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{TMDB_BASE_URL}/{media_type}/{tmdb_id}/videos",
+            params=_auth_params({"language": "en-US"}),
+            headers=HEADERS,
+        )
+        if r.status_code != 200:
+            return None
+    videos = r.json().get("results", [])
+    yt = [v for v in videos if v.get("site") == "YouTube"]
+    # Prefer official trailers, then any trailer, then any video
+    for vtype in ("Trailer", "Teaser", None):
+        for official in (True, False):
+            for v in yt:
+                if vtype and v.get("type") != vtype:
+                    continue
+                if official and not v.get("official"):
+                    continue
+                return v["key"]
+    return None
+
+
 def _day_from_date(date_str: Optional[str]) -> Optional[str]:
     if not date_str:
         return None

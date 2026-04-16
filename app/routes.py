@@ -86,12 +86,28 @@ async def search(request: Request, q: str = ""):
 
 # ── Add show ───────────────────────────────────────────────────────────────────
 
+@router.get("/trailer/{media_type}/{tmdb_id}", response_class=HTMLResponse)
+async def trailer(media_type: str, tmdb_id: int):
+    if media_type not in ("tv", "movie"):
+        raise HTTPException(status_code=400)
+    key = await tmdb.get_trailer_key(tmdb_id, media_type)
+    if key:
+        return HTMLResponse(
+            f'<iframe src="https://www.youtube.com/embed/{key}?autoplay=1" '
+            f'class="w-full aspect-video" frameborder="0" '
+            f'allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>'
+        )
+    return HTMLResponse('<p class="text-gray-400 text-sm text-center py-10">No trailer available.</p>')
+
+
 @router.post("/shows/add", response_class=HTMLResponse)
 async def add_show(request: Request, tmdb_id: int = Form(...), source: str = Form(""), session: Session = Depends(get_session)):
     existing = session.exec(select(TrackedShow).where(TrackedShow.tmdb_id == tmdb_id)).first()
     if existing:
         if source == "discover":
             return HTMLResponse('<span class="text-xs text-gray-500">✓ Added</span>')
+        if source == "search":
+            return HTMLResponse('<span class="text-sm text-yellow-400 flex-shrink-0 px-3 py-1.5">Already added</span>')
         return HTMLResponse('<p class="text-yellow-400">Already in your watchlist.</p>')
 
     details = await tmdb.get_show_details(tmdb_id)
@@ -110,6 +126,12 @@ async def add_show(request: Request, tmdb_id: int = Form(...), source: str = For
     show._services = json.loads(show.streaming_services) if show.streaming_services else []
     if source == "discover":
         return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
+    if source == "search":
+        card_html = templates.get_template("partials/show_card.html").render(show=show)
+        return HTMLResponse(
+            '<span class="text-sm text-green-400 flex-shrink-0 px-3 py-1.5">✓ Added</span>'
+            f'<div class="contents" hx-swap-oob="beforeend:#watchlist-inner">{card_html}</div>'
+        )
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
 
 
@@ -253,6 +275,8 @@ async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Fo
     if existing:
         if source == "discover":
             return HTMLResponse('<span class="text-xs text-gray-500">✓ Added</span>')
+        if source == "search":
+            return HTMLResponse('<span class="text-sm text-yellow-400 flex-shrink-0 px-3 py-1.5">Already added</span>')
         return HTMLResponse('<p class="text-yellow-400 text-sm">Already in your movies.</p>')
 
     details = await tmdb.get_movie_details(tmdb_id)
@@ -268,6 +292,12 @@ async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Fo
     if source == "discover":
         return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
     today = _local_today(session)
+    if source == "search":
+        card_html = templates.get_template("partials/movie_card.html").render(movie=movie, today=today)
+        return HTMLResponse(
+            '<span class="text-sm text-green-400 flex-shrink-0 px-3 py-1.5">✓ Added</span>'
+            f'<div class="contents" hx-swap-oob="beforeend:#movie-list-inner">{card_html}</div>'
+        )
     return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
 
 
