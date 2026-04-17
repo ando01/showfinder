@@ -67,7 +67,8 @@
                 <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
               {% endif %}
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-white leading-tight">{{ show.name }}</p>
+                <a href="https://www.themoviedb.org/tv/{{ show.tmdb_id }}" target="_blank" rel="noopener"
+                  class="font-semibold text-white leading-tight hover:text-blue-400 transition">{{ show.name }}</a>
                 <p class="text-sm mt-0.5">
                   {% if show.last_watched_season %}
                     <span class="text-gray-400">Last: S{{ '%02d' | format(show.last_watched_season) }}E{{ '%02d' | format(show.last_watched_episode_num) }}</span>
