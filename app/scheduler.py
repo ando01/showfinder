@@ -49,6 +49,16 @@ async def refresh_all():
             details = await tmdb.get_show_details(show.tmdb_id)
             if not details:
                 continue
+
+            # Promote completed shows back to watching if a new season has appeared
+            if show.watch_status == "completed" and show.season_episode_counts:
+                import json
+                old_max = max((int(k) for k in json.loads(show.season_episode_counts)), default=0)
+                new_counts = details.get("season_episode_counts")
+                new_max = max((int(k) for k in json.loads(new_counts)), default=0) if new_counts else 0
+                if new_max > old_max:
+                    show.watch_status = "watching"
+
             for key, val in details.items():
                 setattr(show, key, val)
             show.last_refreshed = datetime.utcnow()
