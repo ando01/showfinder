@@ -54,15 +54,12 @@
   <!-- ── TV Tab ── -->
   <div id="tv-content">
 
-    <!-- On Today -->
+    <!-- Up Next -->
     <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-      <div class="flex items-baseline gap-3 mb-3">
-        <h2 class="text-lg font-semibold">On Today</h2>
-        <span class="text-gray-500 text-sm">{{ today_label }}</span>
-      </div>
-      {% if today_shows %}
+      <h2 class="text-lg font-semibold mb-3">Up Next</h2>
+      {% if up_next_shows %}
         <div class="grid gap-3">
-          {% for show in today_shows %}
+          {% for show in up_next_shows %}
             <div class="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
               {% if show.poster_path %}
                 <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
@@ -71,13 +68,18 @@
               {% endif %}
               <div class="flex-1 min-w-0">
                 <p class="font-semibold text-white leading-tight">{{ show.name }}</p>
-                <p class="text-sm text-gray-300 mt-0.5">
-                  <span class="font-medium">{{ show.next_episode_number }}</span>
-                  {% if show.next_episode_name %}<span class="text-gray-400"> — {{ show.next_episode_name }}</span>{% endif %}
+                <p class="text-sm mt-0.5">
+                  {% if show.last_watched_season %}
+                    <span class="text-gray-400">Last: S{{ '%02d' | format(show.last_watched_season) }}E{{ '%02d' | format(show.last_watched_episode_num) }}</span>
+                    {% if show._next_season %}
+                      <span class="text-blue-400 ml-2">→ Watch: S{{ '%02d' | format(show._next_season) }}E{{ '%02d' | format(show._next_episode_num) }}</span>
+                    {% else %}
+                      <span class="text-green-400 ml-2">All caught up!</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="text-gray-500">Start from the beginning</span>
+                  {% endif %}
                 </p>
-                {% if show.air_time %}
-                  <p class="text-xs text-gray-500 mt-0.5">{{ show.air_time }}</p>
-                {% endif %}
                 {% if show._services %}
                   <div class="flex flex-wrap gap-1 mt-1.5">
                     {% for svc in show._services %}
@@ -90,7 +92,7 @@
           {% endfor %}
         </div>
       {% else %}
-        <p class="text-gray-500 text-sm">No tracked shows airing today.</p>
+        <p class="text-gray-500 text-sm">No shows in your watching list yet.</p>
       {% endif %}
     </div>
 

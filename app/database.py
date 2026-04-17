@@ -10,8 +10,11 @@ def _migrate(conn):
     migrations = [
         ("trackedshow",  "vote_average",   "REAL"),
         ("trackedmovie", "vote_average",   "REAL"),
-        ("trackedshow",  "genres",         "TEXT"),
-        ("trackedshow",  "watch_status",   "TEXT DEFAULT 'watching'"),
+        ("trackedshow",  "genres",                  "TEXT"),
+        ("trackedshow",  "season_episode_counts",  "TEXT"),
+        ("trackedshow",  "last_watched_season",    "INTEGER"),
+        ("trackedshow",  "last_watched_episode_num", "INTEGER"),
+        ("trackedshow",  "watch_status",            "TEXT DEFAULT 'watching'"),
     ]
     for table, column, col_type in migrations:
         existing = [row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))]

@@ -18,6 +18,37 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _compute_next_episode(show):
+    """Return (next_season, next_episode_num) after the last watched episode, or (None, None) if all caught up."""
+    s = show.last_watched_season
+    e = show.last_watched_episode_num
+    if not s or not e:
+        return None, None
+    if not show.season_episode_counts:
+        return s, e + 1  # fallback: no season data
+    season_map = json.loads(show.season_episode_counts)
+    ep_count = season_map.get(str(s), 0)
+    if e < ep_count:
+        return s, e + 1
+    # End of season — find the next season
+    max_season = max(int(k) for k in season_map) if season_map else s
+    next_s = s + 1
+    while next_s <= max_season and str(next_s) not in season_map:
+        next_s += 1
+    if next_s <= max_season:
+        return next_s, 1
+    return None, None  # all seasons complete
+
+
+def _enrich_show(show):
+    show._services = json.loads(show.streaming_services) if show.streaming_services else []
+    show._genres = json.loads(show.genres) if show.genres else []
+    show._next_season, show._next_episode_num = _compute_next_episode(show)
+    return show
+
+
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
 def _local_today(session: Session) -> date:
@@ -35,13 +66,13 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
 
     # TV shows
     shows = session.exec(select(TrackedShow)).all()
-    today_shows = []
     for show in shows:
-        show._services = json.loads(show.streaming_services) if show.streaming_services else []
-        show._genres = json.loads(show.genres) if show.genres else []
-        if show.next_episode_date and show.next_episode_date.date() == today:
-            today_shows.append(show)
+        _enrich_show(show)
     all_genres = sorted({g for show in shows for g in show._genres})
+    up_next_shows = sorted(
+        [s for s in shows if (s.watch_status or "watching") == "watching"],
+        key=lambda s: s.name.lower(),
+    )
     shows = _sort_shows(shows, "next_episode")
 
     # Movies
@@ -60,8 +91,7 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     return templates.TemplateResponse("index.html", {
         "request": request,
         "shows": shows,
-        "today_shows": today_shows,
-        "today_label": today.strftime("%A, %B %d"),
+        "up_next_shows": up_next_shows,
         "movies": movies,
         "releasing_this_week": releasing_this_week,
         "today": today,
@@ -126,8 +156,7 @@ async def add_show(request: Request, tmdb_id: int = Form(...), source: str = For
     session.commit()
     session.refresh(show)
 
-    show._services = json.loads(show.streaming_services) if show.streaming_services else []
-    show._genres = json.loads(show.genres) if show.genres else []
+    _enrich_show(show)
     if source == "discover":
         return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
     if source == "search":
@@ -187,8 +216,29 @@ async def update_show_status(
     session.add(show)
     session.commit()
     session.refresh(show)
-    show._services = json.loads(show.streaming_services) if show.streaming_services else []
-    show._genres = json.loads(show.genres) if show.genres else []
+    _enrich_show(show)
+    return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
+
+
+# ── Update watch progress ──────────────────────────────────────────────────────
+
+@router.post("/shows/{show_id}/progress", response_class=HTMLResponse)
+async def update_progress(
+    request: Request,
+    show_id: int,
+    last_watched_season: int = Form(...),
+    last_watched_episode_num: int = Form(...),
+    session: Session = Depends(get_session),
+):
+    show = session.get(TrackedShow, show_id)
+    if not show:
+        raise HTTPException(status_code=404)
+    show.last_watched_season = last_watched_season
+    show.last_watched_episode_num = last_watched_episode_num
+    session.add(show)
+    session.commit()
+    session.refresh(show)
+    _enrich_show(show)
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
 
 
@@ -207,8 +257,7 @@ async def refresh_show(request: Request, show_id: int, session: Session = Depend
         session.add(show)
         session.commit()
         session.refresh(show)
-    show._services = json.loads(show.streaming_services) if show.streaming_services else []
-    show._genres = json.loads(show.genres) if show.genres else []
+    _enrich_show(show)
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
 
 
@@ -275,12 +324,11 @@ async def watchlist_partial(
 ):
     shows = session.exec(select(TrackedShow)).all()
     for show in shows:
-        show._services = json.loads(show.streaming_services) if show.streaming_services else []
-        show._genres = json.loads(show.genres) if show.genres else []
+        _enrich_show(show)
     if status != "all":
         shows = [s for s in shows if (s.watch_status or "watching") == status]
     if genre != "all":
-        shows = [s for s in shows if genre in show._genres]
+        shows = [s for s in shows if genre in s._genres]
     shows = _sort_shows(shows, sort)
     return templates.TemplateResponse("partials/tv_watchlist.html", {
         "request": request,

@@ -78,6 +78,32 @@
       <p class="text-sm text-gray-500">No upcoming episode scheduled</p>
     {% endif %}
 
+    <!-- Episode progress -->
+    {% if ws == 'watching' %}
+    <form
+      hx-post="/shows/{{ show.id }}/progress"
+      hx-target="#show-{{ show.id }}"
+      hx-swap="outerHTML"
+      class="flex items-center gap-2 mt-2 flex-wrap"
+    >
+      <span class="text-xs text-gray-500">Last watched:</span>
+      <span class="text-xs text-gray-400">S</span>
+      <input type="number" name="last_watched_season" min="1"
+        value="{{ show.last_watched_season or '' }}" placeholder="–"
+        class="w-10 bg-gray-800 border border-gray-700 text-xs text-gray-300 rounded px-1 py-0.5 text-center" />
+      <span class="text-xs text-gray-400">E</span>
+      <input type="number" name="last_watched_episode_num" min="1"
+        value="{{ show.last_watched_episode_num or '' }}" placeholder="–"
+        class="w-10 bg-gray-800 border border-gray-700 text-xs text-gray-300 rounded px-1 py-0.5 text-center" />
+      <button type="submit" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1 rounded transition">Save</button>
+      {% if show._next_season %}
+        <span class="text-xs text-blue-400">→ S{{ '%02d' | format(show._next_season) }}E{{ '%02d' | format(show._next_episode_num) }} up next</span>
+      {% elif show.last_watched_season %}
+        <span class="text-xs text-green-400">All caught up!</span>
+      {% endif %}
+    </form>
+    {% endif %}
+
     <!-- Reminder controls -->
     <form
       hx-post="/shows/{{ show.id }}/reminder"

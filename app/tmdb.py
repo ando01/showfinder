@@ -94,6 +94,11 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
 
         import json
         genre_names = [g["name"] for g in data.get("genres", [])]
+        season_episode_counts = {
+            str(s["season_number"]): s["episode_count"]
+            for s in data.get("seasons", [])
+            if s["season_number"] > 0 and s.get("episode_count", 0) > 0
+        }
         return {
             "tmdb_id": tmdb_id,
             "name": data["name"],
@@ -103,6 +108,7 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
             "network": ", ".join(networks) if networks else None,
             "streaming_services": json.dumps(streaming) if streaming else None,
             "genres": json.dumps(genre_names) if genre_names else None,
+            "season_episode_counts": json.dumps(season_episode_counts) if season_episode_counts else None,
             "air_day": air_day,
             "air_time": air_time,
             "next_episode_date": next_ep_date,
