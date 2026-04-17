@@ -44,7 +44,7 @@ async def refresh_all():
     with Session(engine) as session:
         shows = session.exec(select(TrackedShow)).all()
         for show in shows:
-            if show.last_refreshed and show.last_refreshed > stale_cutoff:
+            if show.last_refreshed and show.last_refreshed > stale_cutoff and show.season_episode_counts:
                 continue
             details = await tmdb.get_show_details(show.tmdb_id)
             if not details:
