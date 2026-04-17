@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from datetime import datetime, timedelta
 
 from app.database import engine
-from app.models import TrackedShow
+from app.models import TrackedShow, TrackedMovie
 from app.notifications import send_reminder
 from app import tmdb
 
@@ -35,12 +35,17 @@ async def check_reminders():
                 )
 
 
-async def refresh_all_shows():
-    """Refresh show data from TMDB once daily."""
-    import json
+REFRESH_INTERVAL_HOURS = 6
+
+
+async def refresh_all():
+    """Refresh stale shows and movies from TMDB every 6 hours."""
+    stale_cutoff = datetime.utcnow() - timedelta(hours=REFRESH_INTERVAL_HOURS)
     with Session(engine) as session:
         shows = session.exec(select(TrackedShow)).all()
         for show in shows:
+            if show.last_refreshed and show.last_refreshed > stale_cutoff:
+                continue
             details = await tmdb.get_show_details(show.tmdb_id)
             if not details:
                 continue
@@ -48,12 +53,25 @@ async def refresh_all_shows():
                 setattr(show, key, val)
             show.last_refreshed = datetime.utcnow()
             session.add(show)
+
+        movies = session.exec(select(TrackedMovie)).all()
+        for movie in movies:
+            if movie.last_refreshed and movie.last_refreshed > stale_cutoff:
+                continue
+            details = await tmdb.get_movie_details(movie.tmdb_id)
+            if not details:
+                continue
+            for key, val in details.items():
+                setattr(movie, key, val)
+            movie.last_refreshed = datetime.utcnow()
+            session.add(movie)
+
         session.commit()
 
 
 def start_scheduler():
     # Check reminders every 15 minutes
     scheduler.add_job(check_reminders, CronTrigger(minute="*/15"), id="check_reminders", replace_existing=True)
-    # Refresh show data every day at 6 AM
-    scheduler.add_job(refresh_all_shows, CronTrigger(hour=6, minute=0), id="refresh_shows", replace_existing=True)
+    # Refresh all shows and movies every 6 hours
+    scheduler.add_job(refresh_all, CronTrigger(hour="*/6", minute=0), id="refresh_all", replace_existing=True)
     scheduler.start()
