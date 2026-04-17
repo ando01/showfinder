@@ -82,6 +82,7 @@ async def refresh_all():
 def start_scheduler():
     # Check reminders every 15 minutes
     scheduler.add_job(check_reminders, CronTrigger(minute="*/15"), id="check_reminders", replace_existing=True)
-    # Refresh all shows and movies every 6 hours
+    # Refresh all shows and movies every 6 hours, and once immediately on startup
     scheduler.add_job(refresh_all, CronTrigger(hour="*/6", minute=0), id="refresh_all", replace_existing=True)
+    scheduler.add_job(refresh_all, "date", run_date=datetime.utcnow(), id="refresh_all_startup", replace_existing=True)
     scheduler.start()
