@@ -29,8 +29,10 @@
         <select name="watch_status" class="text-xs rounded-full px-2 py-0.5 border-0 focus:outline-none cursor-pointer
           {% if ws == 'watching' %}bg-teal-900 text-teal-300
           {% elif ws == 'wishlist' %}bg-amber-900 text-amber-300
+          {% elif ws == 'on_hold' %}bg-orange-900 text-orange-300
           {% else %}bg-purple-900 text-purple-300{% endif %}">
           <option value="watching" {% if ws == 'watching' %}selected{% endif %}>Watching</option>
+          <option value="on_hold" {% if ws == 'on_hold' %}selected{% endif %}>On Hold</option>
           <option value="wishlist" {% if ws == 'wishlist' %}selected{% endif %}>Wishlist</option>
           <option value="completed" {% if ws == 'completed' %}selected{% endif %}>Completed</option>
         </select>
@@ -80,7 +82,7 @@
     {% endif %}
 
     <!-- Episode progress -->
-    {% if ws == 'watching' %}
+    {% if ws == 'watching' or ws == 'on_hold' %}
     <form
       hx-post="/shows/{{ show.id }}/progress"
       hx-target="#show-{{ show.id }}"
