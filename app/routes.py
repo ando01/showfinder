@@ -146,7 +146,7 @@ async def trailer(media_type: str, tmdb_id: int):
 
 
 @router.post("/shows/add", response_class=HTMLResponse)
-async def add_show(request: Request, tmdb_id: int = Form(...), source: str = Form(""), session: Session = Depends(get_session)):
+async def add_show(request: Request, tmdb_id: int = Form(...), source: str = Form(""), watch_status: str = Form("watching"), session: Session = Depends(get_session)):
     existing = session.exec(select(TrackedShow).where(TrackedShow.tmdb_id == tmdb_id)).first()
     if existing:
         if source == "discover":
@@ -161,6 +161,7 @@ async def add_show(request: Request, tmdb_id: int = Form(...), source: str = For
 
     show = TrackedShow(
         **details,
+        watch_status=watch_status,
         reminder_hours=DEFAULT_REMINDER_HOURS,
         last_refreshed=datetime.utcnow(),
     )
@@ -367,7 +368,7 @@ async def movie_list_partial(request: Request, sort: str = "release_date", hide_
 # ── Movies ─────────────────────────────────────────────────────────────────────
 
 @router.post("/movies/add", response_class=HTMLResponse)
-async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Form(""), session: Session = Depends(get_session)):
+async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Form(""), watched: bool = Form(False), session: Session = Depends(get_session)):
     existing = session.exec(select(TrackedMovie).where(TrackedMovie.tmdb_id == tmdb_id)).first()
     if existing:
         if source == "discover":
@@ -380,7 +381,7 @@ async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Fo
     if not details:
         return HTMLResponse('<p class="text-red-400 text-sm">Could not fetch movie details.</p>')
 
-    movie = TrackedMovie(**details, last_refreshed=datetime.utcnow())
+    movie = TrackedMovie(**details, watched=watched, last_refreshed=datetime.utcnow())
     session.add(movie)
     session.commit()
     session.refresh(movie)
