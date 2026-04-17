@@ -74,6 +74,11 @@
                     <span class="text-gray-400">Last: S{{ '%02d' | format(show.last_watched_season) }}E{{ '%02d' | format(show.last_watched_episode_num) }}</span>
                     {% if show._next_season %}
                       <span class="text-blue-400 ml-2">→ Watch: S{{ '%02d' | format(show._next_season) }}E{{ '%02d' | format(show._next_episode_num) }}</span>
+                      {% if show._is_series_finale %}
+                        <span class="ml-2 text-xs px-2 py-0.5 bg-red-900 text-red-300 rounded-full font-medium">Series Finale</span>
+                      {% elif show._is_season_finale %}
+                        <span class="ml-2 text-xs px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full font-medium">Season Finale</span>
+                      {% endif %}
                     {% else %}
                       <span class="text-green-400 ml-2">All caught up!</span>
                     {% endif %}

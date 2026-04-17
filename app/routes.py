@@ -46,6 +46,18 @@ def _enrich_show(show):
     show._services = json.loads(show.streaming_services) if show.streaming_services else []
     show._genres = json.loads(show.genres) if show.genres else []
     show._next_season, show._next_episode_num = _compute_next_episode(show)
+
+    show._is_season_finale = False
+    show._is_series_finale = False
+    if show._next_season and show._next_episode_num and show.season_episode_counts:
+        season_map = json.loads(show.season_episode_counts)
+        ep_count = season_map.get(str(show._next_season), 0)
+        if ep_count and show._next_episode_num == ep_count:
+            show._is_season_finale = True
+            max_season = max(int(k) for k in season_map) if season_map else 0
+            if show._next_season == max_season and show.status in ("Ended", "Canceled", "Cancelled"):
+                show._is_series_finale = True
+
     return show
 
 
