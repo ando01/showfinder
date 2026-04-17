@@ -61,6 +61,18 @@ def _enrich_show(show):
     return show
 
 
+def _build_up_next(shows):
+    """Shows in Up Next: watching status, not yet started OR has a next episode to watch."""
+    return sorted(
+        [
+            s for s in shows
+            if (s.watch_status or "watching") == "watching"
+            and not (s.last_watched_season and s._next_season is None)
+        ],
+        key=lambda s: s.name.lower(),
+    )
+
+
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
 def _local_today(session: Session) -> date:
@@ -81,10 +93,7 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     for show in shows:
         _enrich_show(show)
     all_genres = sorted({g for show in shows for g in show._genres})
-    up_next_shows = sorted(
-        [s for s in shows if (s.watch_status or "watching") == "watching"],
-        key=lambda s: s.name.lower(),
-    )
+    up_next_shows = _build_up_next(shows)
     shows = _sort_shows(shows, "next_episode")
 
     # Movies
@@ -253,6 +262,34 @@ async def update_progress(
     session.refresh(show)
     _enrich_show(show)
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
+
+
+# ── Mark next episode watched (Up Next queue) ──────────────────────────────────
+
+@router.post("/shows/{show_id}/watched-next", response_class=HTMLResponse)
+async def watched_next(
+    request: Request,
+    show_id: int,
+    session: Session = Depends(get_session),
+):
+    show = session.get(TrackedShow, show_id)
+    if not show:
+        raise HTTPException(status_code=404)
+    _enrich_show(show)
+    if show._next_season:
+        show.last_watched_season = show._next_season
+        show.last_watched_episode_num = show._next_episode_num
+        session.add(show)
+        session.commit()
+
+    shows = session.exec(select(TrackedShow)).all()
+    for s in shows:
+        _enrich_show(s)
+    up_next_shows = _build_up_next(shows)
+    return templates.TemplateResponse("partials/up_next.html", {
+        "request": request,
+        "up_next_shows": up_next_shows,
+    })
 
 
 # ── Manual refresh ─────────────────────────────────────────────────────────────
