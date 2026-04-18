@@ -7,6 +7,7 @@ from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import json
 import os
+import re
 
 from app.database import get_session, get_setting, save_setting
 from app.models import TrackedShow, TrackedMovie
@@ -61,16 +62,42 @@ def _enrich_show(show):
     return show
 
 
-def _build_up_next(shows):
-    """Shows in Up Next: watching status, not yet started OR has a next episode to watch."""
-    return sorted(
-        [
-            s for s in shows
-            if (s.watch_status or "watching") == "watching"
-            and not (s.last_watched_season and s._next_season is None)
-        ],
-        key=lambda s: s.name.lower(),
-    )
+def _parse_ep(ep_str):
+    """Parse 'S02E08' into (2, 8), or None."""
+    if not ep_str:
+        return None
+    m = re.match(r'S(\d+)E(\d+)', ep_str)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def _next_episode_available(show, today):
+    """Return True if show._next_season/episode is an episode that has already aired."""
+    if not show._next_season or not show._next_episode_num:
+        return False
+    # No future episode scheduled — all episodes have aired
+    if not show.next_episode_number or not show.next_episode_date:
+        return True
+    # Scheduled episode is today or already past — it's available
+    if show.next_episode_date.date() <= today:
+        return True
+    # Scheduled episode is in the future — only show if our next-to-watch comes before it
+    unaired = _parse_ep(show.next_episode_number)
+    if not unaired:
+        return True
+    return (show._next_season, show._next_episode_num) < unaired
+
+
+def _build_up_next(shows, today):
+    """Shows in Up Next: watching status, with at least one available episode to watch."""
+    result = []
+    for s in shows:
+        if (s.watch_status or "watching") != "watching":
+            continue
+        if s.last_watched_season is None:
+            result.append(s)  # not started — always show
+        elif s._next_season is not None and _next_episode_available(s, today):
+            result.append(s)  # has progress and next episode has aired
+    return sorted(result, key=lambda s: s.name.lower())
 
 
 # ── Dashboard ──────────────────────────────────────────────────────────────────
@@ -93,7 +120,7 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     for show in shows:
         _enrich_show(show)
     all_genres = sorted({g for show in shows for g in show._genres})
-    up_next_shows = _build_up_next(shows)
+    up_next_shows = _build_up_next(shows, today)
     shows = _sort_shows(shows, "next_episode")
 
     # Movies
@@ -282,10 +309,11 @@ async def watched_next(
         session.add(show)
         session.commit()
 
+    today = _local_today(session)
     shows = session.exec(select(TrackedShow)).all()
     for s in shows:
         _enrich_show(s)
-    up_next_shows = _build_up_next(shows)
+    up_next_shows = _build_up_next(shows, today)
     return templates.TemplateResponse("partials/up_next.html", {
         "request": request,
         "up_next_shows": up_next_shows,
