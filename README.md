@@ -1,16 +1,42 @@
 # ShowFinder
 
-A self-hosted web app to track your TV shows. Search for any show and ShowFinder will tell you what streaming service it's on, when new episodes air, and send you a push notification reminder so you never miss one.
+A self-hosted web app to track your TV shows and movies. Search for any title and ShowFinder will tell you what streaming service it's on, track your watch progress, show you what to watch next, and send you push notification reminders so you never miss a new episode.
 
 ## Features
 
-- Search for any TV show via TMDB
+### TV Shows
+- Search for any TV show via TMDB and add it to your watchlist
 - See which streaming service it's on (Netflix, Max, Hulu, Disney+, Apple TV+, Peacock, Paramount+, and more)
 - View the next episode date, episode number, and title
+- **Up Next queue** — shows what episode to watch next for every show you're actively watching
+  - Episodes are held out of Up Next until they're actually available (e.g. HBO shows appear after 9 PM ET, Netflix after midnight PT)
+  - Tap **Watched** on any Up Next row to mark that episode done and advance to the next one
+  - Shows drop out of Up Next automatically once you're all caught up
+  - Season Finale and Series Finale badges highlight milestone episodes
+- Track watch progress per show (last watched season/episode)
+- Watch status: **Watching**, **On Hold**, **Wishlist**, or **Completed**
+- Shows auto-promote from Completed back to Watching when a new season is detected
 - Get push notifications via your self-hosted [ntfy](https://ntfy.sh) server
 - Set reminder timing per show (1, 2, 3, 6, 12, or 24 hours before air time)
-- Show data auto-refreshes daily from TMDB
-- Fully self-hosted with Docker
+
+### Movies
+- Search for and track movies alongside your TV shows
+- See release dates and streaming availability
+- **Releasing This Week** section highlights upcoming and newly released movies from your list
+- Mark movies as watched
+- Sort by release date, name, date added, or rating
+
+### Discover
+- Browse trending TV shows and movies
+- Get recommendations based on shows you're already tracking
+- Browse top-rated shows and movies by year
+- Add directly to your watchlist from the Discover page
+
+### General
+- Show and movie data auto-refreshes every 6 hours from TMDB
+- Filter and sort your watchlist by status, genre, or sort order
+- Timezone-aware — dates and times reflect your configured local timezone
+- Fully self-hosted with Docker; SQLite database persists across updates
 
 ## Requirements
 
@@ -55,7 +81,7 @@ docker compose up -d
 http://localhost:8000
 ```
 
-To verify notifications are working, click the **Test Notification** button in the top right corner.
+To verify notifications are working, click the **Test Notification** button on the Settings page.
 
 ## Configuration
 
@@ -66,6 +92,8 @@ To verify notifications are working, click the **Test Notification** button in t
 | `NTFY_TOPIC` | ntfy topic to publish reminders to | `showfinder` |
 | `SECRET_KEY` | Random string for session signing | required |
 | `DEFAULT_REMINDER_HOURS` | Hours before air time to send reminder | `1` |
+
+Timezone and ntfy settings can also be configured from the **Settings** page in the app.
 
 ## Updating
 
