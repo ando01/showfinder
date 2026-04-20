@@ -70,24 +70,43 @@ def _parse_ep(ep_str):
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
-def _next_episode_available(show, today):
-    """Return True if show._next_season/episode is an episode that has already aired."""
+def _next_episode_available(show, today, now_utc):
+    """Return True if show._next_season/episode is an episode that is available to watch right now."""
     if not show._next_season or not show._next_episode_num:
         return False
     # No future episode scheduled — all episodes have aired
     if not show.next_episode_number or not show.next_episode_date:
         return True
-    # Scheduled episode is today or already past — it's available
-    if show.next_episode_date.date() <= today:
+    next_ep_date = show.next_episode_date.date()
+    # Future air date — only show if user's next-to-watch is an already-aired earlier episode
+    if next_ep_date > today:
+        unaired = _parse_ep(show.next_episode_number)
+        if not unaired:
+            return True
+        return (show._next_season, show._next_episode_num) < unaired
+    # Past air date — definitely available
+    if next_ep_date < today:
         return True
-    # Scheduled episode is in the future — only show if our next-to-watch comes before it
+    # Airs today — check if user needs an earlier (already aired) episode first
     unaired = _parse_ep(show.next_episode_number)
-    if not unaired:
+    if unaired and (show._next_season, show._next_episode_num) < unaired:
         return True
-    return (show._next_season, show._next_episode_num) < unaired
+    # User's next episode IS the one releasing today — gate on the release time
+    if show.air_time and show.air_timezone:
+        try:
+            tz = ZoneInfo(show.air_timezone)
+            h, m = map(int, show.air_time.split(":"))
+            release_dt = datetime(
+                next_ep_date.year, next_ep_date.month, next_ep_date.day, h, m, tzinfo=tz
+            )
+            if now_utc < release_dt.astimezone(ZoneInfo("UTC")):
+                return False
+        except Exception:
+            pass
+    return True
 
 
-def _build_up_next(shows, today):
+def _build_up_next(shows, today, now_utc):
     """Shows in Up Next: watching status, with at least one available episode to watch."""
     result = []
     for s in shows:
@@ -95,8 +114,8 @@ def _build_up_next(shows, today):
             continue
         if s.last_watched_season is None:
             result.append(s)  # not started — always show
-        elif s._next_season is not None and _next_episode_available(s, today):
-            result.append(s)  # has progress and next episode has aired
+        elif s._next_season is not None and _next_episode_available(s, today, now_utc):
+            result.append(s)  # has progress and next episode is available
     return sorted(result, key=lambda s: s.name.lower())
 
 
@@ -114,13 +133,14 @@ def _local_today(session: Session) -> date:
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session: Session = Depends(get_session)):
     today = _local_today(session)
+    now_utc = datetime.now(tz=ZoneInfo("UTC"))
 
     # TV shows
     shows = session.exec(select(TrackedShow)).all()
     for show in shows:
         _enrich_show(show)
     all_genres = sorted({g for show in shows for g in show._genres})
-    up_next_shows = _build_up_next(shows, today)
+    up_next_shows = _build_up_next(shows, today, now_utc)
     shows = _sort_shows(shows, "next_episode")
 
     # Movies
@@ -310,10 +330,11 @@ async def watched_next(
         session.commit()
 
     today = _local_today(session)
+    now_utc = datetime.now(tz=ZoneInfo("UTC"))
     shows = session.exec(select(TrackedShow)).all()
     for s in shows:
         _enrich_show(s)
-    up_next_shows = _build_up_next(shows, today)
+    up_next_shows = _build_up_next(shows, today, now_utc)
     return templates.TemplateResponse("partials/up_next.html", {
         "request": request,
         "up_next_shows": up_next_shows,

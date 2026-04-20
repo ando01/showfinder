@@ -4,6 +4,36 @@ from typing import Optional
 from app.config import TMDB_API_KEY, TMDB_BASE_URL, TMDB_IMAGE_BASE
 
 HEADERS = {"accept": "application/json"}
+
+# Known release times per network/service (time in network's home timezone).
+# Keys are lowercase substrings to match against network or streaming service names.
+NETWORK_RELEASE_TIMES = {
+    # Premium cable / streaming — drops at 9 PM ET
+    "hbo":              ("21:00", "America/New_York"),
+    "max":              ("21:00", "America/New_York"),
+    "showtime":         ("21:00", "America/New_York"),
+    "amc":              ("21:00", "America/New_York"),
+    "starz":            ("21:00", "America/New_York"),
+    # FX drops at 10 PM ET
+    "fx":               ("22:00", "America/New_York"),
+    # Streaming — midnight releases
+    "netflix":          ("00:00", "America/Los_Angeles"),
+    "apple tv":         ("00:00", "America/Los_Angeles"),
+    "amazon":           ("00:00", "America/Los_Angeles"),
+    "prime video":      ("00:00", "America/Los_Angeles"),
+    "disney+":          ("00:00", "America/New_York"),
+    "hulu":             ("00:00", "America/New_York"),
+    "peacock":          ("00:00", "America/New_York"),
+    "paramount+":       ("00:00", "America/New_York"),
+    # Broadcast — typical primetime start
+    "nbc":              ("20:00", "America/New_York"),
+    "cbs":              ("20:00", "America/New_York"),
+    "abc":              ("20:00", "America/New_York"),
+    "fox":              ("20:00", "America/New_York"),
+    "the cw":           ("20:00", "America/New_York"),
+    "cw":               ("20:00", "America/New_York"),
+}
+
 # US streaming provider IDs we care about
 STREAMING_PROVIDER_IDS = {
     8: "Netflix",
@@ -69,11 +99,21 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
         # Air schedule
         air_day = None
         air_time = None
-        if data.get("next_episode_to_air"):
-            pass  # air day comes from networks/last_episode pattern below
+        air_timezone = None
         networks = [n["name"] for n in data.get("networks", [])]
         if data.get("last_episode_to_air"):
             air_day = _day_from_date(data["last_episode_to_air"].get("air_date"))
+
+        # Determine release time from network / streaming service name
+        all_names = [n.lower() for n in networks] + [s.lower() for s in streaming]
+        for name in all_names:
+            for key, (t, tz) in NETWORK_RELEASE_TIMES.items():
+                if key in name:
+                    air_time = t
+                    air_timezone = tz
+                    break
+            if air_time:
+                break
 
         # Next episode
         next_ep = data.get("next_episode_to_air")
@@ -111,6 +151,7 @@ async def get_show_details(tmdb_id: int) -> Optional[dict]:
             "season_episode_counts": json.dumps(season_episode_counts) if season_episode_counts else None,
             "air_day": air_day,
             "air_time": air_time,
+            "air_timezone": air_timezone,
             "next_episode_date": next_ep_date,
             "next_episode_name": next_ep_name,
             "next_episode_number": next_ep_number,

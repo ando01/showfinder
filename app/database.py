@@ -15,6 +15,7 @@ def _migrate(conn):
         ("trackedshow",  "last_watched_season",    "INTEGER"),
         ("trackedshow",  "last_watched_episode_num", "INTEGER"),
         ("trackedshow",  "watch_status",            "TEXT DEFAULT 'watching'"),
+        ("trackedshow",  "air_timezone",             "TEXT"),
     ]
     for table, column, col_type in migrations:
         existing = [row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))]
