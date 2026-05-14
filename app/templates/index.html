@@ -8,157 +8,89 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
+<body class="min-h-screen px-4 pt-4 pb-24 sm:pb-6 sm:px-6 max-w-5xl mx-auto">
 
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <a href="/" class="text-3xl font-bold text-white hover:text-blue-400 transition">ShowFinder</a>
-      <p class="text-gray-400 text-sm mt-1">Track your shows and movies.</p>
+  {% set active_page = 'home' %}
+  {% include "partials/nav.html" %}
+
+  <!-- ── Up Next ── -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xl font-bold text-white">Up Next</h2>
+      <a href="/tv" class="text-sm text-gray-500 hover:text-blue-400 transition">All TV shows →</a>
     </div>
-    <div class="flex items-center gap-1 sm:gap-2">
-      <a href="/discover" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Discover</a>
-      <a href="/settings" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Settings</a>
+    <div id="up-next-inner">
+      {% include "partials/up_next.html" %}
     </div>
   </div>
 
-  <!-- Unified Search -->
-  <div class="bg-gray-900 rounded-xl p-5 mb-6 border border-gray-800">
-    <h2 class="text-lg font-semibold mb-3">Add a Show or Movie</h2>
-    <input
-      type="text"
-      name="q"
-      placeholder="Search for a TV show or movie..."
-      autocomplete="off"
-      hx-get="/search"
-      hx-trigger="keyup changed delay:400ms"
-      hx-target="#search-results"
-      hx-swap="innerHTML"
-      class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    />
-    <div id="search-results" class="mt-3"></div>
-  </div>
-
-  <!-- TV / Movies tabs -->
-  <div class="flex gap-1 mb-6 bg-gray-900 p-1 rounded-xl border border-gray-800">
-    <button onclick="switchTab('tv')" id="tab-btn-tv"
-      class="flex-1 text-sm py-2 rounded-lg bg-gray-800 text-white font-medium transition">
-      TV Shows
-    </button>
-    <button onclick="switchTab('movies')" id="tab-btn-movies"
-      class="flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition">
-      Movies
-    </button>
-  </div>
-
-  <!-- ── TV Tab ── -->
-  <div id="tv-content">
-
-    <!-- Up Next -->
-    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-      <h2 class="text-lg font-semibold mb-3">Up Next</h2>
-      <div id="up-next-inner">
-        {% include "partials/up_next.html" %}
-      </div>
+  <!-- ── Movies to Watch ── -->
+  {% if movies_to_watch %}
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xl font-bold text-white">Movies to Watch</h2>
+      <a href="/movies" class="text-sm text-gray-500 hover:text-purple-400 transition">All movies →</a>
     </div>
-
-    <!-- TV Watchlist -->
-    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
-      <h2 class="text-lg font-semibold">Your Watchlist</h2>
-      <form class="flex items-center gap-2 flex-wrap"
-        hx-get="/watchlist" hx-target="#watchlist-inner" hx-swap="innerHTML" hx-trigger="change">
-        <select name="status" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-          <option value="all">All Shows</option>
-          <option value="watching">Watching</option>
-          <option value="on_hold">On Hold</option>
-          <option value="wishlist">Wishlist</option>
-          <option value="completed">Completed</option>
-        </select>
-        {% if all_genres %}
-        <select name="genre" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-          <option value="all">All Genres</option>
-          {% for genre in all_genres %}
-          <option value="{{ genre }}">{{ genre }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
-        <select name="sort" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-          <option value="next_episode">Next Episode</option>
-          <option value="name">Name A–Z</option>
-          <option value="date_added">Date Added</option>
-          <option value="rating">Rating</option>
-        </select>
-      </form>
-    </div>
-    <div id="watchlist-inner" class="grid gap-4">
-      {% include "partials/tv_watchlist.html" %}
-    </div>
-
-  </div><!-- end #tv-content -->
-
-  <!-- ── Movies Tab ── -->
-  <div id="movies-content" style="display:none">
-
-    <!-- Releasing This Week -->
-    {% if releasing_this_week %}
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-        <h2 class="text-lg font-semibold mb-3">Releasing This Week</h2>
-        <div class="grid gap-3">
-          {% for movie in releasing_this_week %}
-            <div class="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
-              {% if movie.poster_path %}
-                <img src="{{ movie.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
-              {% else %}
-                <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+    <div class="grid gap-3">
+      {% for movie in movies_to_watch[:5] %}
+        <div id="movie-{{ movie.id }}" class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+          {% if movie.poster_path %}
+            <img src="{{ movie.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+          {% else %}
+            <div class="w-10 h-14 bg-gray-800 rounded flex-shrink-0"></div>
+          {% endif %}
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-white leading-tight">{{ movie.title }}</p>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              {% if movie.release_date %}
+                {% if movie.release_date.date() > today %}
+                  <span class="text-xs px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full">{{ movie.release_date.strftime('%b %d') }}</span>
+                {% else %}
+                  <span class="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded-full">Available now</span>
+                {% endif %}
               {% endif %}
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-white leading-tight">{{ movie.title }}</p>
-                {% if movie.release_date %}
-                  <p class="text-sm text-gray-300 mt-0.5">
-                    {% if movie.release_date.date() > today %}
-                      <span class="text-purple-300">{{ movie.release_date.strftime('%b %d, %Y') }}</span>
-                    {% else %}
-                      <span class="text-green-400">In theaters now</span>
-                      <span class="text-gray-500 ml-1">({{ movie.release_date.strftime('%b %d') }})</span>
-                    {% endif %}
-                  </p>
-                {% endif %}
-                {% if movie._services %}
-                  <div class="flex flex-wrap gap-1 mt-1.5">
-                    {% for svc in movie._services %}
-                      <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
-                    {% endfor %}
-                  </div>
-                {% endif %}
-              </div>
+              {% if movie.vote_average %}
+                <span class="text-xs text-yellow-400">★ {{ movie.vote_average }}</span>
+              {% endif %}
             </div>
-          {% endfor %}
+            {% if movie._services %}
+              <div class="flex flex-wrap gap-1 mt-1.5">
+                {% for svc in movie._services %}
+                  <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <button
+            hx-post="/movies/{{ movie.id }}/watched"
+            hx-target="#movie-{{ movie.id }}"
+            hx-swap="outerHTML"
+            class="flex-shrink-0 text-xs px-3 py-1.5 bg-purple-900 hover:bg-purple-800 text-purple-200 rounded-lg transition font-medium self-center"
+          >Watched</button>
         </div>
-      </div>
-    {% endif %}
-
-    <!-- Movie List -->
-    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
-      <h2 class="text-lg font-semibold">Your Movies</h2>
-      <form class="flex items-center gap-3 flex-wrap"
-        hx-get="/movie-list" hx-target="#movie-list-inner" hx-swap="innerHTML" hx-trigger="change">
-        <select name="sort" class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
-          <option value="release_date">Release Date</option>
-          <option value="name">Name A–Z</option>
-          <option value="date_added">Date Added</option>
-          <option value="rating">Rating</option>
-        </select>
-        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
-          <input type="checkbox" name="hide_watched" value="true" class="accent-blue-500" />
-          Hide watched
-        </label>
-      </form>
+      {% endfor %}
+      {% if movies_to_watch|length > 5 %}
+        <a href="/movies" class="text-center text-sm text-gray-500 hover:text-purple-400 transition py-1">
+          + {{ movies_to_watch|length - 5 }} more movies →
+        </a>
+      {% endif %}
     </div>
-    <div id="movie-list-inner" class="grid gap-4">
-      {% include "partials/movie_list.html" %}
-    </div>
+  </div>
+  {% endif %}
 
-  </div><!-- end #movies-content -->
+  <!-- ── Suggested for You ── -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xl font-bold text-white">Suggested for You</h2>
+      <a href="/discover" class="text-sm text-gray-500 hover:text-blue-400 transition">Browse all →</a>
+    </div>
+    <div id="suggestions-content"
+      hx-get="/home/suggestions"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <p class="text-gray-600 text-sm">Loading suggestions…</p>
+    </div>
+  </div>
 
   <!-- Trailer modal -->
   <div id="trailer-modal" style="display:none"
@@ -178,26 +110,14 @@
       document.getElementById('trailer-modal').style.display = 'none';
       document.getElementById('trailer-frame').innerHTML = '';
     }
-
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') closeTrailerModal();
     });
-
-    // Show trailer modal whenever #trailer-frame gets new content
     document.body.addEventListener('htmx:afterSwap', function(e) {
       if (e.detail.target && e.detail.target.id === 'trailer-frame') {
         document.getElementById('trailer-modal').style.display = 'flex';
       }
     });
-
-    function switchTab(tab) {
-      document.getElementById('tv-content').style.display = tab === 'tv' ? '' : 'none';
-      document.getElementById('movies-content').style.display = tab === 'movies' ? '' : 'none';
-      var active = 'flex-1 text-sm py-2 rounded-lg bg-gray-800 text-white font-medium transition';
-      var inactive = 'flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition';
-      document.getElementById('tab-btn-tv').className = tab === 'tv' ? active : inactive;
-      document.getElementById('tab-btn-movies').className = tab === 'movies' ? active : inactive;
-    }
   </script>
 
 </body>

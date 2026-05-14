@@ -1,4 +1,5 @@
-<div id="movie-{{ movie.id }}" class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex gap-3 sm:gap-4 p-3 sm:p-4 {% if movie.watched %}opacity-50{% endif %}">
+{% set is_watched = movie._watched if movie._watched is defined else movie.watched %}
+<div id="movie-{{ movie.id }}" class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex gap-3 sm:gap-4 p-3 sm:p-4 {% if is_watched %}opacity-60{% endif %}">
 
   <!-- Poster -->
   {% if movie.poster_path %}
@@ -23,7 +24,7 @@
 
     <!-- Badges -->
     <div class="flex flex-wrap gap-2 mt-1 mb-2">
-      {% if movie.watched %}
+      {% if is_watched %}
         <span class="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-300">✓ Watched</span>
       {% elif movie.release_date and movie.release_date.date() > today %}
         <span class="text-xs px-2 py-0.5 rounded-full bg-purple-900 text-purple-300">Upcoming</span>
@@ -41,10 +42,21 @@
     </div>
 
     <!-- Streaming services -->
-    {% if movie._services %}
+    {% set services = movie._services if movie._services is defined else [] %}
+    {% if services %}
       <div class="flex flex-wrap gap-1 mb-2">
-        {% for svc in movie._services %}
+        {% for svc in services %}
           <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Genres -->
+    {% set genres = movie._genres if movie._genres is defined else [] %}
+    {% if genres %}
+      <div class="flex flex-wrap gap-1 mb-2">
+        {% for genre in genres %}
+          <span class="text-xs px-2 py-0.5 bg-gray-700 text-gray-400 rounded-full">{{ genre }}</span>
         {% endfor %}
       </div>
     {% endif %}
@@ -66,8 +78,8 @@
         hx-post="/movies/{{ movie.id }}/watched"
         hx-target="#movie-{{ movie.id }}"
         hx-swap="outerHTML"
-        class="text-xs px-3 py-1 rounded transition {% if movie.watched %}bg-gray-700 text-gray-400 hover:bg-gray-600{% else %}bg-green-900 text-green-300 hover:bg-green-800{% endif %}"
-      >{% if movie.watched %}↩ Unmark watched{% else %}✓ Mark watched{% endif %}</button>
+        class="text-xs px-3 py-1 rounded transition {% if is_watched %}bg-gray-700 text-gray-400 hover:bg-gray-600{% else %}bg-green-900 text-green-300 hover:bg-green-800{% endif %}"
+      >{% if is_watched %}↩ Unmark watched{% else %}✓ Mark watched{% endif %}</button>
       <button
         hx-post="/movies/{{ movie.id }}/refresh"
         hx-target="#movie-{{ movie.id }}"

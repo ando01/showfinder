@@ -1,0 +1,39 @@
+{% if sections %}
+  <div class="space-y-5">
+    {% for show_name, recs in sections %}
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Because you watch <span class="text-gray-400">{{ show_name }}</span></p>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+          {% for rec in recs %}
+            <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden flex flex-col">
+              <a href="https://www.themoviedb.org/tv/{{ rec.tmdb_id }}" target="_blank" rel="noopener"
+                class="flex-1 block hover:opacity-80 transition"
+              >
+                {% if rec.poster_path %}
+                  <img src="{{ rec.poster_path }}" alt="{{ rec.name }}" class="w-full aspect-[2/3] object-cover" />
+                {% else %}
+                  <div class="w-full aspect-[2/3] bg-gray-800 flex items-center justify-center text-gray-600 text-xs p-2 text-center">No Image</div>
+                {% endif %}
+                <p class="text-xs font-medium text-white px-2 pt-1.5 pb-1 leading-tight line-clamp-2">{{ rec.name }}</p>
+              </a>
+              <div class="px-2 pb-2">
+                {% if rec.tmdb_id in tracked_show_ids %}
+                  <span class="text-xs text-gray-600 block text-center py-0.5">✓ Added</span>
+                {% else %}
+                  <form hx-post="/shows/add" hx-target="this" hx-swap="outerHTML">
+                    <input type="hidden" name="tmdb_id" value="{{ rec.tmdb_id }}" />
+                    <input type="hidden" name="source" value="discover" />
+                    <input type="hidden" name="watch_status" value="want_to_watch" />
+                    <button type="submit" class="w-full text-xs bg-blue-700 hover:bg-blue-600 text-white py-1 rounded transition">+ Add</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-gray-600 text-sm">Add shows to your Watching list to get personalised suggestions.</p>
+{% endif %}

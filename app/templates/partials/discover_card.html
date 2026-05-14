@@ -1,4 +1,4 @@
-<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+<div class="discover-card-wrapper bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
 
   <!-- Clickable area → opens description modal -->
   <div class="cursor-pointer flex-1 flex flex-col hover:opacity-90 transition"
@@ -10,6 +10,7 @@
     data-rating="{{ show.vote_average or '' }}"
     data-tmdb-id="{{ show.tmdb_id }}"
     data-media-type="{{ show.media_type or 'tv' }}"
+    data-genre-ids="{{ show.genre_ids | tojson if show.genre_ids else '[]' }}"
   >
     {% if show.poster_path %}
       <img src="{{ show.poster_path }}" alt="{{ show.name }}" class="w-full aspect-[2/3] object-cover" />

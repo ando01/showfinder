@@ -8,19 +8,37 @@ engine = create_engine(DATABASE_URL, echo=False)
 def _migrate(conn):
     """Add any columns that exist in models but are missing from the live DB."""
     migrations = [
-        ("trackedshow",  "vote_average",   "REAL"),
-        ("trackedmovie", "vote_average",   "REAL"),
-        ("trackedshow",  "genres",                  "TEXT"),
-        ("trackedshow",  "season_episode_counts",  "TEXT"),
-        ("trackedshow",  "last_watched_season",    "INTEGER"),
+        ("trackedshow",  "vote_average",             "REAL"),
+        ("trackedmovie", "vote_average",             "REAL"),
+        ("trackedshow",  "genres",                   "TEXT"),
+        ("trackedshow",  "season_episode_counts",    "TEXT"),
+        ("trackedshow",  "last_watched_season",      "INTEGER"),
         ("trackedshow",  "last_watched_episode_num", "INTEGER"),
-        ("trackedshow",  "watch_status",            "TEXT DEFAULT 'watching'"),
+        ("trackedshow",  "watch_status",             "TEXT DEFAULT 'watching'"),
         ("trackedshow",  "air_timezone",             "TEXT"),
+        ("trackedmovie", "genres",                   "TEXT"),
+        ("trackedmovie", "watch_status",             "TEXT DEFAULT 'want_to_watch'"),
     ]
     for table, column, col_type in migrations:
         existing = [row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))]
         if existing and column not in existing:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+
+    # Data migrations — idempotent
+    # Merge old show statuses into want_to_watch
+    conn.execute(text(
+        "UPDATE trackedshow SET watch_status = 'want_to_watch' "
+        "WHERE watch_status IN ('on_hold', 'wishlist')"
+    ))
+    # Populate movie watch_status from legacy watched boolean
+    conn.execute(text(
+        "UPDATE trackedmovie SET watch_status = 'completed' "
+        "WHERE watched = 1 AND (watch_status IS NULL OR watch_status = 'want_to_watch')"
+    ))
+    conn.execute(text(
+        "UPDATE trackedmovie SET watch_status = 'want_to_watch' "
+        "WHERE watch_status IS NULL"
+    ))
 
 
 def create_db():

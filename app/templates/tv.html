@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-950 text-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TV Shows — ShowFinder</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen px-4 pt-4 pb-24 sm:pb-6 sm:px-6 max-w-5xl mx-auto">
+
+  {% set active_page = 'tv' %}
+  {% include "partials/nav.html" %}
+
+  <!-- Search -->
+  <div class="bg-gray-900 rounded-xl p-4 mb-5 border border-gray-800">
+    <input
+      type="text"
+      name="q"
+      placeholder="Search to add a TV show…"
+      autocomplete="off"
+      hx-get="/search"
+      hx-trigger="keyup changed delay:400ms"
+      hx-target="#search-results"
+      hx-swap="innerHTML"
+      hx-vals='{"q": ""}'
+      class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+    <div id="search-results" class="mt-3"></div>
+  </div>
+
+  <!-- Status tabs -->
+  <div class="flex gap-1 mb-4 bg-gray-900 p-1 rounded-xl border border-gray-800" id="status-tabs">
+    <button onclick="setStatus('watching', this)" id="tab-watching"
+      class="flex-1 text-sm py-2 rounded-lg bg-gray-800 text-white font-medium transition">
+      Watching
+    </button>
+    <button onclick="setStatus('want_to_watch', this)" id="tab-want_to_watch"
+      class="flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition">
+      Want to Watch
+    </button>
+    <button onclick="setStatus('completed', this)" id="tab-completed"
+      class="flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition">
+      Completed
+    </button>
+  </div>
+
+  <!-- Genre pills + sort row -->
+  {% if all_genres %}
+  <div class="flex items-center gap-2 mb-3 flex-wrap">
+    <span class="text-xs text-gray-500 shrink-0">Genre:</span>
+    {% for genre in all_genres %}
+      <button
+        onclick="toggleGenre(this, '{{ genre }}')"
+        data-genre="{{ genre }}"
+        class="genre-pill text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition">
+        {{ genre }}
+      </button>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Sort row -->
+  <div class="flex items-center justify-between mb-4">
+    <span class="text-sm text-gray-500" id="list-count"></span>
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-gray-500">Sort:</span>
+      <select id="sort-select" onchange="loadList()"
+        class="bg-gray-800 border border-gray-700 text-sm text-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <option value="next_episode">Next Episode</option>
+        <option value="name">Name A–Z</option>
+        <option value="date_added">Date Added</option>
+        <option value="rating">Rating</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Show list -->
+  <div id="watchlist-inner" class="grid gap-4">
+    <p class="text-gray-500 text-sm">Loading…</p>
+  </div>
+
+  <!-- Trailer modal -->
+  <div id="trailer-modal" style="display:none"
+    class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+    onclick="if(event.target===this) closeTrailerModal()">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+        <span class="text-sm font-medium text-gray-300">Trailer</span>
+        <button onclick="closeTrailerModal()" class="text-gray-500 hover:text-white text-2xl leading-none">×</button>
+      </div>
+      <div id="trailer-frame"></div>
+    </div>
+  </div>
+
+  <script>
+    var currentStatus = 'watching';
+    var selectedGenres = new Set();
+
+    function setStatus(status, btn) {
+      currentStatus = status;
+      document.querySelectorAll('#status-tabs button').forEach(function(b) {
+        b.className = 'flex-1 text-sm py-2 rounded-lg text-gray-400 hover:text-white transition';
+      });
+      btn.className = 'flex-1 text-sm py-2 rounded-lg bg-gray-800 text-white font-medium transition';
+      loadList();
+    }
+
+    function toggleGenre(btn, genre) {
+      if (selectedGenres.has(genre)) {
+        selectedGenres.delete(genre);
+        btn.className = 'genre-pill text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition';
+      } else {
+        selectedGenres.add(genre);
+        btn.className = 'genre-pill text-xs px-3 py-1 rounded-full bg-blue-600 text-white transition';
+      }
+      loadList();
+    }
+
+    function loadList() {
+      var genres = Array.from(selectedGenres).join(',');
+      var sort = document.getElementById('sort-select').value;
+      var url = '/tv/list?status=' + currentStatus + '&genres=' + encodeURIComponent(genres) + '&sort=' + sort;
+      htmx.ajax('GET', url, {target: '#watchlist-inner', swap: 'innerHTML'});
+    }
+
+    function closeTrailerModal() {
+      document.getElementById('trailer-modal').style.display = 'none';
+      document.getElementById('trailer-frame').innerHTML = '';
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeTrailerModal();
+    });
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+      if (e.detail.target && e.detail.target.id === 'trailer-frame') {
+        document.getElementById('trailer-modal').style.display = 'flex';
+      }
+    });
+
+    // Load initial list on page load
+    loadList();
+  </script>
+
+</body>
+</html>

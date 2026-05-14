@@ -8,19 +8,10 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
+<body class="min-h-screen px-4 pt-4 pb-24 sm:pb-6 sm:px-6 max-w-5xl mx-auto">
 
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-8">
-    <div>
-      <a href="/" class="text-3xl font-bold text-white hover:text-blue-400 transition">ShowFinder</a>
-      <p class="text-gray-400 text-sm mt-1">Discover new shows and movies</p>
-    </div>
-    <div class="flex items-center gap-1 sm:gap-2">
-      <a href="/" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Watchlist</a>
-      <a href="/settings" class="text-sm text-gray-400 hover:text-white transition px-3 py-2">Settings</a>
-    </div>
-  </div>
+  {% set active_page = 'discover' %}
+  {% include "partials/nav.html" %}
 
   <!-- Type toggle: TV / Movies -->
   <div class="flex gap-2 mb-4">
@@ -35,13 +26,20 @@
   </div>
 
   <!-- Category tabs -->
-  <div class="flex gap-1 mb-6 bg-gray-900 p-1 rounded-xl border border-gray-800">
+  <div class="flex gap-1 mb-4 bg-gray-900 p-1 rounded-xl border border-gray-800">
     <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg bg-gray-800 text-white font-medium transition"
       onclick="loadDiscover('trending', this)">Trending</button>
     <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg text-gray-400 hover:text-white transition"
       onclick="loadDiscover('similar', this)">Similar</button>
     <button class="tab-btn flex-1 text-sm py-2 px-3 rounded-lg text-gray-400 hover:text-white transition"
       onclick="loadDiscover('top', this)">Top by Year</button>
+  </div>
+
+  <!-- Genre pills (populated dynamically after content loads) -->
+  <div id="genre-pills-row" style="display:none" class="flex items-center gap-2 mb-4 flex-wrap">
+    <span class="text-xs text-gray-500 shrink-0">Genre:</span>
+    <div id="genre-pills" class="flex flex-wrap gap-2"></div>
+    <button onclick="clearDiscoverGenres()" class="text-xs text-gray-600 hover:text-gray-400 transition ml-1">Clear</button>
   </div>
 
   <!-- Content -->
@@ -94,6 +92,21 @@
   <script>
     var discoverType = 'tv';
     var discoverCategory = 'trending';
+    var selectedDiscoverGenres = new Set();
+
+    // TMDB genre ID → name maps for client-side filtering
+    var TV_GENRE_MAP = {
+      10759:'Action & Adventure', 16:'Animation', 35:'Comedy', 80:'Crime',
+      99:'Documentary', 18:'Drama', 10751:'Family', 10762:'Kids', 9648:'Mystery',
+      10763:'News', 10764:'Reality', 10765:'Sci-Fi & Fantasy', 10766:'Soap',
+      10767:'Talk', 10768:'War & Politics', 37:'Western'
+    };
+    var MOVIE_GENRE_MAP = {
+      28:'Action', 12:'Adventure', 16:'Animation', 35:'Comedy', 80:'Crime',
+      99:'Documentary', 18:'Drama', 10751:'Family', 14:'Fantasy', 36:'History',
+      27:'Horror', 10402:'Music', 9648:'Mystery', 10749:'Romance',
+      878:'Science Fiction', 53:'Thriller', 10752:'War', 37:'Western'
+    };
 
     function setDiscoverType(type) {
       discoverType = type;
@@ -101,6 +114,7 @@
       var inactive = 'text-sm px-4 py-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition';
       document.getElementById('type-btn-tv').className = type === 'tv' ? active : inactive;
       document.getElementById('type-btn-movies').className = type === 'movies' ? active : inactive;
+      selectedDiscoverGenres.clear();
       loadContent();
     }
 
@@ -114,6 +128,7 @@
         btn.classList.remove('text-gray-400');
         btn.classList.add('bg-gray-800', 'text-white', 'font-medium');
       }
+      selectedDiscoverGenres.clear();
       loadContent();
     }
 
@@ -123,6 +138,72 @@
         : '/discover/movies/' + discoverCategory;
       htmx.ajax('GET', url, {target: '#discover-content', swap: 'innerHTML'});
       closeDiscoverModal();
+    }
+
+    function buildGenrePills() {
+      var genreMap = discoverType === 'tv' ? TV_GENRE_MAP : MOVIE_GENRE_MAP;
+      var allGenreIds = new Set();
+      document.querySelectorAll('[data-genre-ids]').forEach(function(el) {
+        try {
+          JSON.parse(el.dataset.genreIds || '[]').forEach(function(id) { allGenreIds.add(id); });
+        } catch(e) {}
+      });
+
+      var pills = document.getElementById('genre-pills');
+      pills.innerHTML = '';
+
+      var genres = Array.from(allGenreIds)
+        .map(function(id) { return { id: id, name: genreMap[id] }; })
+        .filter(function(g) { return g.name; })
+        .sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+      if (genres.length === 0) {
+        document.getElementById('genre-pills-row').style.display = 'none';
+        return;
+      }
+
+      genres.forEach(function(genre) {
+        var btn = document.createElement('button');
+        btn.textContent = genre.name;
+        btn.dataset.genreId = genre.id;
+        btn.className = 'genre-pill text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition';
+        btn.onclick = function() { toggleDiscoverGenre(btn, genre.id); };
+        pills.appendChild(btn);
+      });
+
+      document.getElementById('genre-pills-row').style.display = 'flex';
+    }
+
+    function toggleDiscoverGenre(btn, genreId) {
+      if (selectedDiscoverGenres.has(genreId)) {
+        selectedDiscoverGenres.delete(genreId);
+        btn.className = 'genre-pill text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition';
+      } else {
+        selectedDiscoverGenres.add(genreId);
+        btn.className = 'genre-pill text-xs px-3 py-1 rounded-full bg-blue-600 text-white transition';
+      }
+      filterDiscoverCards();
+    }
+
+    function clearDiscoverGenres() {
+      selectedDiscoverGenres.clear();
+      document.querySelectorAll('#genre-pills .genre-pill').forEach(function(btn) {
+        btn.className = 'genre-pill text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition';
+      });
+      filterDiscoverCards();
+    }
+
+    function filterDiscoverCards() {
+      var selected = Array.from(selectedDiscoverGenres);
+      document.querySelectorAll('.discover-card-wrapper').forEach(function(wrapper) {
+        var el = wrapper.querySelector('[data-genre-ids]');
+        if (!el) { wrapper.style.display = ''; return; }
+        if (selected.length === 0) { wrapper.style.display = ''; return; }
+        try {
+          var ids = JSON.parse(el.dataset.genreIds || '[]');
+          wrapper.style.display = selected.some(function(id) { return ids.includes(id); }) ? '' : 'none';
+        } catch(e) { wrapper.style.display = ''; }
+      });
     }
 
     function openDiscoverModal(el) {
@@ -143,7 +224,6 @@
         rating.textContent = '';
       }
 
-      // Wire up trailer button for this specific show/movie
       var trailerBtn = document.getElementById('modal-trailer-btn');
       trailerBtn.setAttribute('hx-get', '/trailer/' + mediaPath + '/' + el.dataset.tmdbId);
       htmx.process(trailerBtn);
@@ -161,15 +241,15 @@
     }
 
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        closeTrailerModal();
-        closeDiscoverModal();
-      }
+      if (e.key === 'Escape') { closeTrailerModal(); closeDiscoverModal(); }
     });
 
     document.body.addEventListener('htmx:afterSwap', function(e) {
       if (e.detail.target && e.detail.target.id === 'trailer-frame') {
         document.getElementById('trailer-modal').style.display = 'flex';
+      }
+      if (e.detail.target && e.detail.target.id === 'discover-content') {
+        buildGenrePills();
       }
     });
   </script>

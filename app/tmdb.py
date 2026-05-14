@@ -175,6 +175,7 @@ def _format_discover_results(results: list, media_type: str = "tv") -> list[dict
             "first_air_date": date or "",
             "vote_average": round(s.get("vote_average", 0), 1) if s.get("vote_average") else None,
             "overview": s.get("overview", ""),
+            "genre_ids": s.get("genre_ids", []),
         })
     return out
 
@@ -267,6 +268,7 @@ async def get_movie_details(tmdb_id: int) -> Optional[dict]:
         except Exception:
             pass
 
+    genre_names = [g["name"] for g in data.get("genres", [])]
     return {
         "tmdb_id": tmdb_id,
         "title": data["title"],
@@ -277,6 +279,7 @@ async def get_movie_details(tmdb_id: int) -> Optional[dict]:
         "runtime": data.get("runtime") or None,
         "release_date": release_date,
         "vote_average": round(data["vote_average"], 1) if data.get("vote_average") else None,
+        "genres": json.dumps(genre_names) if genre_names else None,
     }
 
 

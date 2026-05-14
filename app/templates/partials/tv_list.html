@@ -1,0 +1,19 @@
+{% for show in shows %}
+  {% include "partials/show_card.html" %}
+{% else %}
+  {% if status == 'watching' %}
+    <div class="text-center py-10 text-gray-500">
+      <p class="text-base mb-1">Nothing here yet.</p>
+      <p class="text-sm">Search for a show above and add it as <span class="text-teal-400">Watching</span>.</p>
+    </div>
+  {% elif status == 'want_to_watch' %}
+    <div class="text-center py-10 text-gray-500">
+      <p class="text-base mb-1">Your Want to Watch list is empty.</p>
+      <p class="text-sm">Search or <a href="/discover" class="text-blue-400 hover:underline">Discover</a> shows to add them here.</p>
+    </div>
+  {% else %}
+    <div class="text-center py-10 text-gray-500">
+      <p class="text-base">No completed shows yet.</p>
+    </div>
+  {% endif %}
+{% endfor %}

@@ -8,16 +8,10 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen p-6 max-w-2xl mx-auto">
+<body class="min-h-screen px-4 pt-4 pb-24 sm:pb-6 sm:px-6 max-w-2xl mx-auto">
 
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-8">
-    <div>
-      <a href="/" class="text-3xl font-bold text-white hover:text-blue-400 transition">ShowFinder</a>
-      <p class="text-gray-400 text-sm mt-1">Settings</p>
-    </div>
-    <a href="/" class="text-sm text-gray-400 hover:text-white transition">← Back to Watchlist</a>
-  </div>
+  {% set active_page = 'settings' %}
+  {% include "partials/nav.html" %}
 
   <!-- ntfy Configuration -->
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">

@@ -18,6 +18,10 @@ from app.config import DEFAULT_REMINDER_HOURS
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+# Register tojson filter (not in Jinja2 stdlib)
+import json as _json
+templates.env.filters["tojson"] = lambda v: _json.dumps(v)
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -60,6 +64,13 @@ def _enrich_show(show):
                 show._is_series_finale = True
 
     return show
+
+
+def _enrich_movie(movie):
+    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    movie._genres = json.loads(movie.genres) if movie.genres else []
+    movie._watched = (movie.watch_status or "want_to_watch") == "completed"
+    return movie
 
 
 def _parse_ep(ep_str):
@@ -135,35 +146,30 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     today = _local_today(session)
     now_utc = datetime.now(tz=ZoneInfo("UTC"))
 
-    # TV shows
+    # TV shows — only need watching ones for Up Next
     shows = session.exec(select(TrackedShow)).all()
     for show in shows:
         _enrich_show(show)
-    all_genres = sorted({g for show in shows for g in show._genres})
     up_next_shows = _build_up_next(shows, today, now_utc)
-    shows = _sort_shows(shows, "next_episode")
 
-    # Movies
+    # Movies to watch — want_to_watch, released or releasing in next 30 days
     movies = session.exec(select(TrackedMovie)).all()
     for movie in movies:
-        movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
-    movies = _sort_movies(movies, "release_date")
+        _enrich_movie(movie)
 
-    week_start = datetime.combine(today - timedelta(days=3), datetime.min.time())
-    week_end = datetime.combine(today + timedelta(days=14), datetime.max.time())
-    releasing_this_week = [
-        m for m in movies
-        if not m.watched and m.release_date and week_start <= m.release_date <= week_end
-    ]
+    cutoff_future = datetime.combine(today + timedelta(days=30), datetime.max.time())
+    movies_to_watch = sorted(
+        [m for m in movies
+         if (m.watch_status or "want_to_watch") == "want_to_watch"
+         and m.release_date and m.release_date <= cutoff_future],
+        key=lambda m: m.release_date or datetime.max
+    )
 
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "shows": shows,
         "up_next_shows": up_next_shows,
-        "movies": movies,
-        "releasing_this_week": releasing_this_week,
+        "movies_to_watch": movies_to_watch,
         "today": today,
-        "all_genres": all_genres,
     })
 
 
@@ -185,7 +191,7 @@ async def search(request: Request, q: str = ""):
     })
 
 
-# ── Add show ───────────────────────────────────────────────────────────────────
+# ── Trailer ────────────────────────────────────────────────────────────────────
 
 @router.get("/trailer/{media_type}/{tmdb_id}", response_class=HTMLResponse)
 async def trailer(media_type: str, tmdb_id: int):
@@ -201,8 +207,117 @@ async def trailer(media_type: str, tmdb_id: int):
     return HTMLResponse('<p class="text-gray-400 text-sm text-center py-10">No trailer available.</p>')
 
 
+# ── TV Shows page ──────────────────────────────────────────────────────────────
+
+@router.get("/tv", response_class=HTMLResponse)
+async def tv_page(request: Request, session: Session = Depends(get_session)):
+    shows = session.exec(select(TrackedShow)).all()
+    for show in shows:
+        _enrich_show(show)
+    all_genres = sorted({g for show in shows for g in show._genres})
+    return templates.TemplateResponse("tv.html", {
+        "request": request,
+        "all_genres": all_genres,
+    })
+
+
+@router.get("/tv/list", response_class=HTMLResponse)
+async def tv_list(
+    request: Request,
+    status: str = "watching",
+    genres: str = "",
+    sort: str = "next_episode",
+    session: Session = Depends(get_session),
+):
+    shows = session.exec(select(TrackedShow)).all()
+    for show in shows:
+        _enrich_show(show)
+    shows = [s for s in shows if (s.watch_status or "watching") == status]
+    if genres:
+        genre_list = [g.strip() for g in genres.split(",") if g.strip()]
+        shows = [s for s in shows if any(g in s._genres for g in genre_list)]
+    shows = _sort_shows(shows, sort)
+    return templates.TemplateResponse("partials/tv_list.html", {
+        "request": request,
+        "shows": shows,
+        "status": status,
+    })
+
+
+# ── Movies page ────────────────────────────────────────────────────────────────
+
+@router.get("/movies", response_class=HTMLResponse)
+async def movies_page(request: Request, session: Session = Depends(get_session)):
+    movies = session.exec(select(TrackedMovie)).all()
+    for movie in movies:
+        _enrich_movie(movie)
+    all_genres = sorted({g for movie in movies for g in movie._genres})
+    return templates.TemplateResponse("movies.html", {
+        "request": request,
+        "all_genres": all_genres,
+    })
+
+
+@router.get("/movies/list", response_class=HTMLResponse)
+async def movies_list(
+    request: Request,
+    status: str = "want_to_watch",
+    genres: str = "",
+    sort: str = "release_date",
+    session: Session = Depends(get_session),
+):
+    today = _local_today(session)
+    movies = session.exec(select(TrackedMovie)).all()
+    for movie in movies:
+        _enrich_movie(movie)
+    movies = [m for m in movies if (m.watch_status or "want_to_watch") == status]
+    if genres:
+        genre_list = [g.strip() for g in genres.split(",") if g.strip()]
+        movies = [m for m in movies if any(g in m._genres for g in genre_list)]
+    movies = _sort_movies(movies, sort)
+    return templates.TemplateResponse("partials/movie_status_list.html", {
+        "request": request,
+        "movies": movies,
+        "today": today,
+    })
+
+
+# ── Home suggestions ───────────────────────────────────────────────────────────
+
+@router.get("/home/suggestions", response_class=HTMLResponse)
+async def home_suggestions(request: Request, session: Session = Depends(get_session)):
+    watching = session.exec(
+        select(TrackedShow).where(TrackedShow.watch_status == "watching")
+    ).all()
+    tracked_show_ids = {s.tmdb_id for s in session.exec(select(TrackedShow)).all()}
+    tracked_movie_ids = {m.tmdb_id for m in session.exec(select(TrackedMovie)).all()}
+
+    async def fetch_recs(show):
+        recs = await tmdb.get_recommendations(show.tmdb_id)
+        filtered = [r for r in recs if r["tmdb_id"] not in tracked_show_ids][:5]
+        return show.name, filtered
+
+    results = await asyncio.gather(*[fetch_recs(s) for s in watching[:4]])
+    sections = [(name, recs) for name, recs in results if recs]
+
+    return templates.TemplateResponse("partials/suggestions.html", {
+        "request": request,
+        "sections": sections,
+        "tracked_show_ids": tracked_show_ids,
+        "tracked_movie_ids": tracked_movie_ids,
+    })
+
+
+# ── Add show ───────────────────────────────────────────────────────────────────
+
 @router.post("/shows/add", response_class=HTMLResponse)
-async def add_show(request: Request, tmdb_id: int = Form(...), source: str = Form(""), watch_status: str = Form("watching"), session: Session = Depends(get_session)):
+async def add_show(
+    request: Request,
+    tmdb_id: int = Form(...),
+    source: str = Form(""),
+    watch_status: str = Form("watching"),
+    session: Session = Depends(get_session),
+):
     existing = session.exec(select(TrackedShow).where(TrackedShow.tmdb_id == tmdb_id)).first()
     if existing:
         if source == "discover":
@@ -409,9 +524,11 @@ def _sort_movies(movies, sort: str):
         return sorted(movies, key=lambda m: m.added_at, reverse=True)
     if sort == "rating":
         return sorted(movies, key=lambda m: m.vote_average or 0, reverse=True)
-    # default: release_date, watched items last
-    return sorted(movies, key=lambda m: (m.watched, m.release_date or datetime.max))
+    # default: release_date
+    return sorted(movies, key=lambda m: m.release_date or datetime.max)
 
+
+# ── Legacy watchlist route (backward compat) ───────────────────────────────────
 
 @router.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_partial(
@@ -435,26 +552,16 @@ async def watchlist_partial(
     })
 
 
-@router.get("/movie-list", response_class=HTMLResponse)
-async def movie_list_partial(request: Request, sort: str = "release_date", hide_watched: bool = False, session: Session = Depends(get_session)):
-    today = _local_today(session)
-    movies = session.exec(select(TrackedMovie)).all()
-    for movie in movies:
-        movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
-    if hide_watched:
-        movies = [m for m in movies if not m.watched]
-    movies = _sort_movies(movies, sort)
-    return templates.TemplateResponse("partials/movie_list.html", {
-        "request": request,
-        "movies": movies,
-        "today": today,
-    })
-
-
 # ── Movies ─────────────────────────────────────────────────────────────────────
 
 @router.post("/movies/add", response_class=HTMLResponse)
-async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Form(""), watched: bool = Form(False), session: Session = Depends(get_session)):
+async def add_movie(
+    request: Request,
+    tmdb_id: int = Form(...),
+    source: str = Form(""),
+    watch_status: str = Form("want_to_watch"),
+    session: Session = Depends(get_session),
+):
     existing = session.exec(select(TrackedMovie).where(TrackedMovie.tmdb_id == tmdb_id)).first()
     if existing:
         if source == "discover":
@@ -467,12 +574,13 @@ async def add_movie(request: Request, tmdb_id: int = Form(...), source: str = Fo
     if not details:
         return HTMLResponse('<p class="text-red-400 text-sm">Could not fetch movie details.</p>')
 
-    movie = TrackedMovie(**details, watched=watched, last_refreshed=datetime.utcnow())
+    watched = watch_status == "completed"
+    movie = TrackedMovie(**details, watch_status=watch_status, watched=watched, last_refreshed=datetime.utcnow())
     session.add(movie)
     session.commit()
     session.refresh(movie)
 
-    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    _enrich_movie(movie)
     if source == "discover":
         return HTMLResponse('<span class="text-xs text-green-400">✓ Added</span>')
     today = _local_today(session)
@@ -500,11 +608,13 @@ async def toggle_watched(request: Request, movie_id: int, session: Session = Dep
     movie = session.get(TrackedMovie, movie_id)
     if not movie:
         raise HTTPException(status_code=404)
-    movie.watched = not movie.watched
+    new_status = "want_to_watch" if (movie.watch_status or "want_to_watch") == "completed" else "completed"
+    movie.watch_status = new_status
+    movie.watched = new_status == "completed"
     session.add(movie)
     session.commit()
     session.refresh(movie)
-    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    _enrich_movie(movie)
     today = _local_today(session)
     return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
 
@@ -522,9 +632,32 @@ async def refresh_movie(request: Request, movie_id: int, session: Session = Depe
         session.add(movie)
         session.commit()
         session.refresh(movie)
-    movie._services = json.loads(movie.streaming_services) if movie.streaming_services else []
+    _enrich_movie(movie)
     today = _local_today(session)
     return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
+
+
+# ── Legacy movie-list route (backward compat) ──────────────────────────────────
+
+@router.get("/movie-list", response_class=HTMLResponse)
+async def movie_list_partial(
+    request: Request,
+    sort: str = "release_date",
+    hide_watched: bool = False,
+    session: Session = Depends(get_session),
+):
+    today = _local_today(session)
+    movies = session.exec(select(TrackedMovie)).all()
+    for movie in movies:
+        _enrich_movie(movie)
+    if hide_watched:
+        movies = [m for m in movies if not m._watched]
+    movies = _sort_movies(movies, sort)
+    return templates.TemplateResponse("partials/movie_list.html", {
+        "request": request,
+        "movies": movies,
+        "today": today,
+    })
 
 
 # ── Discover ───────────────────────────────────────────────────────────────────
