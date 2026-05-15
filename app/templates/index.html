@@ -8,87 +8,135 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen px-4 pt-4 pb-24 sm:pb-6 sm:px-6 max-w-5xl mx-auto">
+<body class="min-h-screen px-4 pt-4 pb-24 sm:pb-6 sm:px-6 max-w-3xl mx-auto">
 
   {% set active_page = 'home' %}
   {% include "partials/nav.html" %}
 
-  <!-- ── Up Next ── -->
-  <div class="mb-6">
+  <!-- ══ WATCH NOW ══ -->
+  <div class="mb-8">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl font-bold text-white">Up Next</h2>
-      <a href="/tv" class="text-sm text-gray-500 hover:text-blue-400 transition">All TV shows →</a>
+      <h2 class="text-2xl font-extrabold text-white tracking-tight">Watch Now</h2>
+      <a href="/tv" class="text-sm text-gray-500 hover:text-teal-400 transition">All shows →</a>
     </div>
     <div id="up-next-inner">
       {% include "partials/up_next.html" %}
     </div>
   </div>
 
-  <!-- ── Movies to Watch ── -->
+  <!-- ══ COMING UP ══ -->
+  {% if coming_up_schedule %}
+  <div class="mb-8">
+    <h2 class="text-xl font-bold text-white tracking-tight mb-4">Coming Up</h2>
+    <div class="space-y-5">
+      {% for label, day_shows in coming_up_schedule %}
+        <div>
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">{{ label }}</p>
+          <div class="space-y-2">
+            {% for show in day_shows %}
+              <div class="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-3 py-3">
+                {% if show.poster_path %}
+                  <img src="{{ show.poster_path }}" alt="{{ show.name }}"
+                    class="w-9 h-[52px] object-cover rounded flex-shrink-0" />
+                {% else %}
+                  <div class="w-9 h-[52px] bg-gray-800 rounded flex-shrink-0"></div>
+                {% endif %}
+                <div class="flex-1 min-w-0">
+                  <p class="font-semibold text-white text-sm leading-tight">{{ show.name }}</p>
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                    {% if show.next_episode_number %}
+                      <span class="text-xs text-gray-400">{{ show.next_episode_number }}</span>
+                    {% endif %}
+                    {% if show.air_time %}
+                      <span class="text-xs text-gray-600">
+                        · {{ show.air_time[:5] }}
+                        {% if show.air_timezone %}{{ show.air_timezone.split('/')[-1] | replace('_',' ') }}{% endif %}
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% if show._services %}
+                  <div class="flex flex-wrap gap-1 flex-shrink-0">
+                    {% for svc in show._services[:2] %}
+                      <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ MOVIES TO WATCH ══ -->
   {% if movies_to_watch %}
-  <div class="mb-6">
+  <div class="mb-8">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl font-bold text-white">Movies to Watch</h2>
+      <h2 class="text-xl font-bold text-white tracking-tight">Movies to Watch</h2>
       <a href="/movies" class="text-sm text-gray-500 hover:text-purple-400 transition">All movies →</a>
     </div>
-    <div class="grid gap-3">
+    <div class="space-y-2">
       {% for movie in movies_to_watch[:5] %}
-        <div id="movie-{{ movie.id }}" class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+        <div id="movie-{{ movie.id }}" class="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-3 py-3">
           {% if movie.poster_path %}
-            <img src="{{ movie.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+            <img src="{{ movie.poster_path }}" class="w-9 h-[52px] object-cover rounded flex-shrink-0" />
           {% else %}
-            <div class="w-10 h-14 bg-gray-800 rounded flex-shrink-0"></div>
+            <div class="w-9 h-[52px] bg-gray-800 rounded flex-shrink-0"></div>
           {% endif %}
           <div class="flex-1 min-w-0">
-            <p class="font-semibold text-white leading-tight">{{ movie.title }}</p>
-            <div class="flex flex-wrap gap-1.5 mt-1">
+            <p class="font-semibold text-white text-sm leading-tight">{{ movie.title }}</p>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
               {% if movie.release_date %}
                 {% if movie.release_date.date() > today %}
-                  <span class="text-xs px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full">{{ movie.release_date.strftime('%b %d') }}</span>
+                  <span class="text-xs text-purple-400">{{ movie.release_date.strftime('%b %d') }}</span>
                 {% else %}
-                  <span class="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded-full">Available now</span>
+                  <span class="text-xs text-green-400">Available now</span>
                 {% endif %}
               {% endif %}
               {% if movie.vote_average %}
-                <span class="text-xs text-yellow-400">★ {{ movie.vote_average }}</span>
+                <span class="text-xs text-yellow-500">★ {{ movie.vote_average }}</span>
               {% endif %}
             </div>
-            {% if movie._services %}
-              <div class="flex flex-wrap gap-1 mt-1.5">
-                {% for svc in movie._services %}
-                  <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
-                {% endfor %}
-              </div>
-            {% endif %}
           </div>
+          {% if movie._services %}
+            <div class="flex flex-wrap gap-1 flex-shrink-0">
+              {% for svc in movie._services[:1] %}
+                <span class="text-xs px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">{{ svc }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
           <button
             hx-post="/movies/{{ movie.id }}/watched"
             hx-target="#movie-{{ movie.id }}"
             hx-swap="outerHTML"
-            class="flex-shrink-0 text-xs px-3 py-1.5 bg-purple-900 hover:bg-purple-800 text-purple-200 rounded-lg transition font-medium self-center"
-          >Watched</button>
+            class="flex-shrink-0 text-xs px-3 py-1.5 bg-purple-900 hover:bg-purple-800 text-purple-200 rounded-lg transition font-medium">
+            Watched ✓
+          </button>
         </div>
       {% endfor %}
       {% if movies_to_watch|length > 5 %}
-        <a href="/movies" class="text-center text-sm text-gray-500 hover:text-purple-400 transition py-1">
-          + {{ movies_to_watch|length - 5 }} more movies →
+        <a href="/movies" class="block text-center text-sm text-gray-500 hover:text-purple-400 transition py-1">
+          + {{ movies_to_watch|length - 5 }} more →
         </a>
       {% endif %}
     </div>
   </div>
   {% endif %}
 
-  <!-- ── Suggested for You ── -->
+  <!-- ══ SUGGESTED FOR YOU ══ -->
   <div class="mb-6">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl font-bold text-white">Suggested for You</h2>
+      <h2 class="text-xl font-bold text-white tracking-tight">Suggested for You</h2>
       <a href="/discover" class="text-sm text-gray-500 hover:text-blue-400 transition">Browse all →</a>
     </div>
     <div id="suggestions-content"
       hx-get="/home/suggestions"
       hx-trigger="load"
       hx-swap="innerHTML">
-      <p class="text-gray-600 text-sm">Loading suggestions…</p>
+      <p class="text-gray-700 text-sm">Loading…</p>
     </div>
   </div>
 

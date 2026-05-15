@@ -1,30 +1,32 @@
 {% if up_next_shows %}
   <div class="grid gap-3">
     {% for show in up_next_shows %}
-      <div class="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
+      <div class="flex items-center gap-4 bg-gray-900 border border-teal-900/50 rounded-xl p-3 sm:p-4">
+        <!-- Poster -->
         {% if show.poster_path %}
-          <img src="{{ show.poster_path }}" class="w-10 h-14 object-cover rounded flex-shrink-0" />
+          <img src="{{ show.poster_path }}" alt="{{ show.name }}"
+            class="w-14 h-20 sm:w-16 sm:h-24 object-cover rounded-lg flex-shrink-0" />
         {% else %}
-          <div class="w-10 h-14 bg-gray-700 rounded flex-shrink-0"></div>
+          <div class="w-14 h-20 sm:w-16 sm:h-24 bg-gray-800 rounded-lg flex-shrink-0"></div>
         {% endif %}
+
+        <!-- Info -->
         <div class="flex-1 min-w-0">
-          <a href="https://www.themoviedb.org/tv/{{ show.tmdb_id }}" target="_blank" rel="noopener"
-            class="font-semibold text-white leading-tight hover:text-blue-400 transition">{{ show.name }}</a>
-          <p class="text-sm mt-0.5">
-            {% if show.last_watched_season %}
-              <span class="text-gray-400">Last: S{{ '%02d' | format(show.last_watched_season) }}E{{ '%02d' | format(show.last_watched_episode_num) }}</span>
-              {% if show._next_season %}
-                <span class="text-blue-400 ml-2">→ Watch: S{{ '%02d' | format(show._next_season) }}E{{ '%02d' | format(show._next_episode_num) }}</span>
-                {% if show._is_series_finale %}
-                  <span class="ml-2 text-xs px-2 py-0.5 bg-red-900 text-red-300 rounded-full font-medium">Series Finale</span>
-                {% elif show._is_season_finale %}
-                  <span class="ml-2 text-xs px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full font-medium">Season Finale</span>
-                {% endif %}
+          <p class="font-bold text-white text-base sm:text-lg leading-tight">{{ show.name }}</p>
+
+          {% if show.last_watched_season %}
+            <p class="text-teal-400 font-medium text-sm mt-0.5">
+              Watch S{{ '%02d' | format(show._next_season) }}E{{ '%02d' | format(show._next_episode_num) }}
+              {% if show._is_series_finale %}
+                <span class="ml-1.5 text-xs px-2 py-0.5 bg-red-900 text-red-300 rounded-full">Series Finale</span>
+              {% elif show._is_season_finale %}
+                <span class="ml-1.5 text-xs px-2 py-0.5 bg-purple-900 text-purple-300 rounded-full">Season Finale</span>
               {% endif %}
-            {% else %}
-              <span class="text-gray-500">Start from the beginning</span>
-            {% endif %}
-          </p>
+            </p>
+          {% else %}
+            <p class="text-teal-400 font-medium text-sm mt-0.5">Start from the beginning</p>
+          {% endif %}
+
           {% if show._services %}
             <div class="flex flex-wrap gap-1 mt-1.5">
               {% for svc in show._services %}
@@ -33,18 +35,26 @@
             </div>
           {% endif %}
         </div>
+
+        <!-- Action -->
         {% if show._next_season %}
           <button
             hx-post="/shows/{{ show.id }}/watched-next"
             hx-target="#up-next-inner"
             hx-swap="innerHTML"
-            class="flex-shrink-0 text-xs px-3 py-1.5 bg-green-800 hover:bg-green-700 text-green-200 rounded-lg transition font-medium self-center">
-            Watched
+            class="flex-shrink-0 text-sm px-4 py-2 bg-teal-700 hover:bg-teal-600 text-white rounded-lg transition font-semibold whitespace-nowrap">
+            Watched ✓
           </button>
         {% endif %}
       </div>
     {% endfor %}
   </div>
 {% else %}
-  <p class="text-gray-500 text-sm">No shows in your watching list yet.</p>
+  <div class="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-5 text-center justify-center">
+    <span class="text-2xl">✓</span>
+    <div>
+      <p class="text-white font-medium">You're all caught up!</p>
+      <p class="text-gray-500 text-sm mt-0.5">Check what's coming up below, or <a href="/tv" class="text-blue-400 hover:underline">browse your shows</a>.</p>
+    </div>
+  </div>
 {% endif %}

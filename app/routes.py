@@ -141,16 +141,42 @@ def _local_today(session: Session) -> date:
     return datetime.now(tz=tz).date()
 
 
+def _schedule_label(d: date, today: date) -> str:
+    delta = (d - today).days
+    if delta == 0:
+        return "Today"
+    if delta == 1:
+        return "Tomorrow"
+    return d.strftime("%A · %b %d")
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, session: Session = Depends(get_session)):
     today = _local_today(session)
     now_utc = datetime.now(tz=ZoneInfo("UTC"))
 
-    # TV shows — only need watching ones for Up Next
     shows = session.exec(select(TrackedShow)).all()
     for show in shows:
         _enrich_show(show)
     up_next_shows = _build_up_next(shows, today, now_utc)
+
+    # Coming Up: watching shows that are NOT in Watch Now but have a known future air date
+    up_next_ids = {s.id for s in up_next_shows}
+    from collections import defaultdict
+    schedule_dict = defaultdict(list)
+    for show in shows:
+        if (show.watch_status or "watching") != "watching":
+            continue
+        if show.id in up_next_ids:
+            continue
+        if show.next_episode_date and show.next_episode_date.date() >= today:
+            schedule_dict[show.next_episode_date.date()].append(show)
+
+    # Sort shows within each day alphabetically, then sort days
+    coming_up_schedule = [
+        (_schedule_label(d, today), sorted(day_shows, key=lambda s: s.name.lower()))
+        for d, day_shows in sorted(schedule_dict.items())
+    ]
 
     # Movies to watch — want_to_watch, released or releasing in next 30 days
     movies = session.exec(select(TrackedMovie)).all()
@@ -168,6 +194,7 @@ async def dashboard(request: Request, session: Session = Depends(get_session)):
     return templates.TemplateResponse("index.html", {
         "request": request,
         "up_next_shows": up_next_shows,
+        "coming_up_schedule": coming_up_schedule,
         "movies_to_watch": movies_to_watch,
         "today": today,
     })
