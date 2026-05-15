@@ -1,0 +1,17 @@
+<div id="movie-rating-{{ movie.id }}" class="flex items-center gap-0.5 mt-2"
+  onmouseleave="resetStars(this, {{ movie.user_rating or 0 }})">
+  {% for i in range(1, 6) %}
+    <button type="button"
+      onmouseenter="previewStars(this.parentElement, {{ i }})"
+      onclick="submitRating('/movies/{{ movie.id }}/rating', {{ i }}, '#movie-rating-{{ movie.id }}')"
+      class="star text-xl leading-none transition-transform hover:scale-125 {{ 'text-yellow-400' if movie.user_rating and movie.user_rating >= i else 'text-gray-700' }}"
+    >★</button>
+  {% endfor %}
+  {% if movie.user_rating %}
+    <button type="button"
+      onclick="submitRating('/movies/{{ movie.id }}/rating', 0, '#movie-rating-{{ movie.id }}')"
+      class="text-xs text-gray-600 hover:text-gray-400 transition ml-1.5 leading-none"
+      title="Clear rating"
+    >✕</button>
+  {% endif %}
+</div>

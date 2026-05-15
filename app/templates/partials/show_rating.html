@@ -1,0 +1,17 @@
+<div id="show-rating-{{ show.id }}" class="flex items-center gap-0.5 mt-2"
+  onmouseleave="resetStars(this, {{ show.user_rating or 0 }})">
+  {% for i in range(1, 6) %}
+    <button type="button"
+      onmouseenter="previewStars(this.parentElement, {{ i }})"
+      onclick="submitRating('/shows/{{ show.id }}/rating', {{ i }}, '#show-rating-{{ show.id }}')"
+      class="star text-xl leading-none transition-transform hover:scale-125 {{ 'text-yellow-400' if show.user_rating and show.user_rating >= i else 'text-gray-700' }}"
+    >★</button>
+  {% endfor %}
+  {% if show.user_rating %}
+    <button type="button"
+      onclick="submitRating('/shows/{{ show.id }}/rating', 0, '#show-rating-{{ show.id }}')"
+      class="text-xs text-gray-600 hover:text-gray-400 transition ml-1.5 leading-none"
+      title="Clear rating"
+    >✕</button>
+  {% endif %}
+</div>

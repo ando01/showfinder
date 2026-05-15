@@ -18,6 +18,8 @@ def _migrate(conn):
         ("trackedshow",  "air_timezone",             "TEXT"),
         ("trackedmovie", "genres",                   "TEXT"),
         ("trackedmovie", "watch_status",             "TEXT DEFAULT 'want_to_watch'"),
+        ("trackedshow",  "user_rating",              "INTEGER"),
+        ("trackedmovie", "user_rating",              "INTEGER"),
     ]
     for table, column, col_type in migrations:
         existing = [row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))]

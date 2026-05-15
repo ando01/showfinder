@@ -29,6 +29,7 @@ class TrackedShow(SQLModel, table=True):
     last_watched_season: Optional[int] = None
     last_watched_episode_num: Optional[int] = None
     watch_status: Optional[str] = Field(default="watching")  # "watching" | "want_to_watch" | "completed"
+    user_rating: Optional[int] = None                        # 1–5 stars
     reminder_hours: int = Field(default=1)
     reminder_enabled: bool = Field(default=True)
     added_at: datetime = Field(default_factory=datetime.utcnow)
@@ -48,6 +49,7 @@ class TrackedMovie(SQLModel, table=True):
     vote_average: Optional[float] = None
     genres: Optional[str] = None               # JSON list of genre names
     watch_status: Optional[str] = Field(default="want_to_watch")  # "want_to_watch" | "completed"
+    user_rating: Optional[int] = None                             # 1–5 stars
     watched: bool = Field(default=False)       # legacy — derived from watch_status
     added_at: datetime = Field(default_factory=datetime.utcnow)
     last_refreshed: Optional[datetime] = None

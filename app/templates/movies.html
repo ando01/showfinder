@@ -89,6 +89,22 @@
   </div>
 
   <script>
+    // ── Star rating helpers ──────────────────────────────────────────────────
+    function previewStars(container, upTo) {
+      container.querySelectorAll('.star').forEach(function(s, i) {
+        s.style.color = i < upTo ? '#facc15' : '#374151';
+      });
+    }
+    function resetStars(container, current) {
+      container.querySelectorAll('.star').forEach(function(s, i) {
+        s.style.color = i < current ? '#facc15' : '#374151';
+      });
+    }
+    function submitRating(url, rating, target) {
+      htmx.ajax('POST', url, { target: target, swap: 'outerHTML', values: { rating: rating } });
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     var currentStatus = 'want_to_watch';
     var selectedGenres = new Set();
 

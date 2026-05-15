@@ -313,18 +313,17 @@ async def movies_list(
 
 @router.get("/home/suggestions", response_class=HTMLResponse)
 async def home_suggestions(request: Request, session: Session = Depends(get_session)):
-    watching = session.exec(
-        select(TrackedShow).where(TrackedShow.watch_status == "watching")
-    ).all()
-    tracked_show_ids = {s.tmdb_id for s in session.exec(select(TrackedShow)).all()}
+    all_shows = session.exec(select(TrackedShow)).all()
+    tracked_show_ids = {s.tmdb_id for s in all_shows}
     tracked_movie_ids = {m.tmdb_id for m in session.exec(select(TrackedMovie)).all()}
+    seeds = _recommendation_seeds(all_shows, limit=4)
 
     async def fetch_recs(show):
         recs = await tmdb.get_recommendations(show.tmdb_id)
         filtered = [r for r in recs if r["tmdb_id"] not in tracked_show_ids][:5]
         return show.name, filtered
 
-    results = await asyncio.gather(*[fetch_recs(s) for s in watching[:4]])
+    results = await asyncio.gather(*[fetch_recs(s) for s in seeds])
     sections = [(name, recs) for name, recs in results if recs]
 
     return templates.TemplateResponse("partials/suggestions.html", {
@@ -377,6 +376,24 @@ async def add_show(
             f'<div class="contents" hx-swap-oob="beforeend:#watchlist-inner">{card_html}</div>'
         )
     return templates.TemplateResponse("partials/show_card.html", {"request": request, "show": show})
+
+
+# ── Rate show ──────────────────────────────────────────────────────────────────
+
+@router.post("/shows/{show_id}/rating", response_class=HTMLResponse)
+async def rate_show(
+    request: Request,
+    show_id: int,
+    rating: int = Form(...),
+    session: Session = Depends(get_session),
+):
+    show = session.get(TrackedShow, show_id)
+    if not show:
+        raise HTTPException(status_code=404)
+    show.user_rating = rating if rating > 0 else None
+    session.add(show)
+    session.commit()
+    return templates.TemplateResponse("partials/show_rating.html", {"request": request, "show": show})
 
 
 # ── Remove show ────────────────────────────────────────────────────────────────
@@ -620,6 +637,24 @@ async def add_movie(
     return templates.TemplateResponse("partials/movie_card.html", {"request": request, "movie": movie, "today": today})
 
 
+# ── Rate movie ─────────────────────────────────────────────────────────────────
+
+@router.post("/movies/{movie_id}/rating", response_class=HTMLResponse)
+async def rate_movie(
+    request: Request,
+    movie_id: int,
+    rating: int = Form(...),
+    session: Session = Depends(get_session),
+):
+    movie = session.get(TrackedMovie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404)
+    movie.user_rating = rating if rating > 0 else None
+    session.add(movie)
+    session.commit()
+    return templates.TemplateResponse("partials/movie_rating.html", {"request": request, "movie": movie})
+
+
 @router.delete("/movies/{movie_id}", response_class=HTMLResponse)
 async def remove_movie(movie_id: int, session: Session = Depends(get_session)):
     movie = session.get(TrackedMovie, movie_id)
@@ -705,18 +740,27 @@ async def discover_trending(request: Request, session: Session = Depends(get_ses
     })
 
 
+def _recommendation_seeds(shows, limit: int = 10) -> list:
+    """Order shows for recommendation seeding: 4-5 star first, then unrated completed, then unrated watching."""
+    high_rated  = [s for s in shows if s.user_rating and s.user_rating >= 4]
+    unrated_done = [s for s in shows if not s.user_rating and (s.watch_status or "watching") == "completed"]
+    unrated_watching = [s for s in shows if not s.user_rating and (s.watch_status or "watching") == "watching"]
+    return (high_rated + unrated_done + unrated_watching)[:limit]
+
+
 @router.get("/discover/similar", response_class=HTMLResponse)
 async def discover_similar(request: Request, session: Session = Depends(get_session)):
-    tracked = session.exec(select(TrackedShow)).all()
-    tracked_ids = {s.tmdb_id for s in tracked}
+    all_shows = session.exec(select(TrackedShow)).all()
+    tracked_ids = {s.tmdb_id for s in all_shows}
+    seeds = _recommendation_seeds(all_shows)
 
     async def fetch_recs(show):
         recs = await tmdb.get_recommendations(show.tmdb_id)
         filtered = [r for r in recs if r["tmdb_id"] not in tracked_ids]
-        return show.name, filtered
+        return show.name, filtered, show.user_rating
 
-    results = await asyncio.gather(*[fetch_recs(s) for s in tracked[:10]])
-    sections = [(name, shows) for name, shows in results if shows]
+    results = await asyncio.gather(*[fetch_recs(s) for s in seeds])
+    sections = [(name, recs, rating) for name, recs, rating in results if recs]
 
     return templates.TemplateResponse("partials/discover_similar.html", {
         "request": request,

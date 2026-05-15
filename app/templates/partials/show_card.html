@@ -105,6 +105,9 @@
     </form>
     {% endif %}
 
+    <!-- Rating -->
+    {% include "partials/show_rating.html" %}
+
     <!-- Reminder controls -->
     <form
       hx-post="/shows/{{ show.id }}/reminder"
